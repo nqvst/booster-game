@@ -31,6 +31,13 @@ export function createRenderer(canvas, config) {
 
     const { map } = game
     const me = game.rockets.find((r) => r.id === localId)
+    if (!me) {
+      // Joining: no rocket until the host's first snapshot.
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.fillStyle = ROCK
+      ctx.fillRect(0, 0, w, h)
+      return
+    }
     const scale = Math.max(w, h) / config.view.size
     cam ??= { x: me.x, y: me.y }
     const follow = Math.min(1, dt * 6)
@@ -84,7 +91,7 @@ export function createRenderer(canvas, config) {
       ctx.fill()
     }
 
-    for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset)
+    for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset, r === me)
 
     particles = particles.filter((p) => (p.life -= dt) > 0)
     for (const p of particles) {
@@ -142,7 +149,7 @@ export function createRenderer(canvas, config) {
   }
 }
 
-function drawRocket(ctx, r, offset) {
+function drawRocket(ctx, r, offset, isMe) {
   ctx.save()
   ctx.translate(r.x, r.y)
   ctx.rotate(r.angle)
@@ -182,6 +189,11 @@ function drawRocket(ctx, r, offset) {
   ctx.lineTo(-8, -10)
   ctx.closePath()
   ctx.fill()
+  if (isMe) {
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+  }
   ctx.fillStyle = '#e8f1ff'
   ctx.beginPath()
   ctx.arc(0, -6, 3, 0, Math.PI * 2)

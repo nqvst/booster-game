@@ -1,39 +1,147 @@
 import { config } from './config.js'
 import { canyon } from './maps/canyon.js'
-import { createGame, step } from './sim/game.js'
+import { addPlayer, createGame, maxPlayersPerTeam, removePlayer, snapshotOf, step } from './sim/game.js'
 import { createLocalInput } from './input.js'
 import { createRenderer } from './render.js'
 import { createTuningPanel } from './tuning.js'
+import { hostRoom, joinRoom } from './net.js'
 
-const LOCAL_ID = 'p1'
-// Co-op vs CPU. With networking, more blue (or red, for PvP) players join here.
-const PLAYERS = [{ id: LOCAL_ID, team: 'blue' }]
+const LOCAL_ID = 'host'
+const TEAM = 'blue' // co-op vs CPU: everyone is blue. PvP would assign red here.
 const RESTART_DELAY = 4
+const SNAPSHOT_EVERY = 4 // ticks → 30 Hz at 120 tick rate
 
 const canvas = document.querySelector('canvas')
+const status = document.getElementById('status')
+const inviteButton = document.getElementById('invite')
 const input = createLocalInput(canvas, config.keys)
 const draw = createRenderer(canvas, config)
 createTuningPanel(config)
 
-let game = createGame(canyon, PLAYERS)
-let last = performance.now()
+let game = createGame(canyon, [{ id: LOCAL_ID, team: TEAM }])
+let localId = LOCAL_ID
+let room = null // set while hosting: { code, broadcast }
+let client = null // set while joined: { id, sendInput }
+const remoteInputs = {}
 let pending = 0
+let ticksSinceSnapshot = 0
+let unsentEvents = []
+let receivedEvents = []
+let last = performance.now()
 
 requestAnimationFrame(function frame(now) {
   const elapsed = Math.min((now - last) / 1000, 0.25) // a backgrounded tab shouldn't fast-forward
   last = now
-  pending += elapsed
+  const local = { left: input.left, right: input.right }
 
-  // Fixed-step sim; each tick gets an input snapshot (what a network layer would send).
+  let events
+  if (client) {
+    client.sendInput(local)
+    events = receivedEvents
+    receivedEvents = []
+  } else {
+    events = runSim(elapsed, local)
+  }
+
+  draw(game, localId, events, elapsed)
+  requestAnimationFrame(frame)
+})
+
+// Local or hosting: fixed-step sim, each tick gets everyone's latest input.
+function runSim(elapsed, local) {
+  pending += elapsed
   const tick = 1 / config.tickRate
   const events = []
   while (pending >= tick) {
-    step(game, { [LOCAL_ID]: { left: input.left, right: input.right } }, config)
+    step(game, { ...remoteInputs, [localId]: local }, config)
     events.push(...game.events)
     pending -= tick
+    if (!room) continue
+    unsentEvents.push(...game.events)
+    if (++ticksSinceSnapshot < SNAPSHOT_EVERY) continue
+    room.broadcast({ type: 'snapshot', ...snapshotOf(game), events: unsentEvents })
+    ticksSinceSnapshot = 0
+    unsentEvents = []
   }
+  if (game.winner && game.time - game.wonAt > RESTART_DELAY) {
+    game = createGame(canyon, game.rockets.map(({ id, team }) => ({ id, team })))
+  }
+  return events
+}
 
-  draw(game, LOCAL_ID, events, elapsed)
-  if (game.winner && game.time - game.wonAt > RESTART_DELAY) game = createGame(canyon, PLAYERS)
-  requestAnimationFrame(frame)
-})
+inviteButton.onclick = async () => {
+  if (!room) {
+    inviteButton.disabled = true
+    try {
+      room = await hostRoom({
+        onJoin(id) {
+          if (game.rockets.filter((r) => r.team === TEAM).length >= maxPlayersPerTeam(game, TEAM)) return false
+          addPlayer(game, { id, team: TEAM })
+          return true
+        },
+        onLeave(id) {
+          removePlayer(game, id)
+          delete remoteInputs[id]
+        },
+        onInput(id, playerInput) {
+          remoteInputs[id] = playerInput
+        },
+        onError(err) {
+          console.error('Host network error', err)
+          showStatus(`Network error: ${err.message}`)
+        },
+      })
+    } catch (err) {
+      console.error('Creating room failed', err)
+      showStatus(`Couldn't create room: ${err.message}`)
+      return
+    } finally {
+      inviteButton.disabled = false
+    }
+  }
+  const link = `${location.origin}${location.pathname}#${room.code}`
+  try {
+    await navigator.clipboard.writeText(link)
+    showStatus(`Room ${room.code} · link copied: ${link}`)
+  } catch (err) {
+    console.error('Clipboard write failed', err)
+    showStatus(`Room ${room.code} · share this link: ${link}`)
+  }
+}
+
+const joinCode = location.hash.slice(1).toUpperCase()
+if (joinCode) join(joinCode)
+
+async function join(code) {
+  inviteButton.hidden = true
+  showStatus(`Joining ${code}…`)
+  game = createGame(canyon, []) // filled by the host's snapshots
+  try {
+    client = await joinRoom(code, {
+      onSnapshot(snapshot) {
+        Object.assign(game, snapshot)
+        receivedEvents.push(...snapshot.events)
+      },
+      onClose: backToSolo,
+    })
+    localId = client.id
+    showStatus(`Joined room ${code}`)
+  } catch (err) {
+    console.error(`Joining ${code} failed`, err)
+    backToSolo(`Couldn't join ${code}: ${err.message}`)
+  }
+}
+
+function backToSolo(reason) {
+  client = null
+  history.replaceState(null, '', location.pathname) // reload shouldn't rejoin
+  game = createGame(canyon, [{ id: LOCAL_ID, team: TEAM }])
+  localId = LOCAL_ID
+  inviteButton.hidden = false
+  showStatus(reason)
+}
+
+function showStatus(text) {
+  status.textContent = text
+  status.hidden = false
+}

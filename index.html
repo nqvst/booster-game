@@ -22,16 +22,33 @@
         -webkit-user-select: none;
         -webkit-touch-callout: none;
       }
-      #tune-toggle {
+      #controls {
         position: fixed;
         top: 8px;
         right: 8px;
-        font-size: 18px;
+        display: flex;
+        gap: 6px;
+      }
+      #controls button {
+        font-size: 16px;
         background: rgba(0, 0, 0, 0.4);
         color: #fff;
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 6px;
-        padding: 4px 8px;
+        padding: 4px 10px;
+      }
+      #status {
+        position: fixed;
+        bottom: 8px;
+        left: 8px;
+        max-width: min(60vw, 520px);
+        background: rgba(0, 0, 0, 0.5);
+        color: #dde3f0;
+        font-size: 13px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        user-select: text;
+        overflow-wrap: anywhere;
       }
       #tuning {
         position: fixed;
@@ -62,7 +79,11 @@
   </head>
   <body>
     <canvas></canvas>
-    <button id="tune-toggle" aria-label="Tuning panel">⚙</button>
+    <div id="controls">
+      <button id="invite">Invite</button>
+      <button id="tune-toggle" aria-label="Tuning panel">⚙</button>
+    </div>
+    <div id="status" hidden></div>
     <div id="tuning" hidden></div>
     <script type="module" src="src/main.js"></script>
   </body>

@@ -4,11 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build",
+    "build": "vite build --base=./",
     "preview": "vite preview --host",
     "test": "node test/sim.test.js"
   },
   "devDependencies": {
     "vite": "^8.3.5"
+  },
+  "dependencies": {
+    "peerjs": "^1.5.5"
   }
 }

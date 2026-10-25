@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { config as baseConfig } from '../src/config.js'
-import { createGame, flagHome, step } from '../src/sim/game.js'
+import { addPlayer, createGame, flagHome, maxPlayersPerTeam, removePlayer, step } from '../src/sim/game.js'
 
 const flat = {
   width: 2000,
@@ -110,6 +110,17 @@ function runUntil({ game, config }, done, seconds) {
   const t = setup({ ...flat, cannons: [{ x: 1000, y: 900, team: 'red' }] }, (c) => (c.cannon.enabled = true))
   Object.assign(t.r, { x: 1400, y: 900 - 18 })
   assert(runUntil(t, () => !t.r.alive, 6), 'cannon should hit rocket in range')
+}
+
+// Players join and leave mid-game; slots are reused, full teams refuse.
+{
+  const t = setup()
+  addPlayer(t.game, { id: 'p2', team: 'blue' })
+  removePlayer(t.game, 'p1')
+  addPlayer(t.game, { id: 'p3', team: 'blue' })
+  assert.deepEqual(t.game.rockets.map((r) => [r.id, r.slot]), [['p2', 1], ['p3', 0]], 'slot reuse')
+  while (t.game.rockets.length < maxPlayersPerTeam(t.game, 'blue')) addPlayer(t.game, { id: `x${t.game.rockets.length}`, team: 'blue' })
+  assert.throws(() => addPlayer(t.game, { id: 'late', team: 'blue' }), /full/)
 }
 
 console.log('sim ok')
