@@ -26,24 +26,28 @@ const remoteInputs = {}
 let pending = 0
 let ticksSinceSnapshot = 0
 let unsentEvents = []
-let receivedEvents = []
-let last = performance.now()
+let drawEvents = [] // sim/snapshot events not yet shown
 
-requestAnimationFrame(function frame(now) {
-  const elapsed = Math.min((now - last) / 1000, 0.25) // a backgrounded tab shouldn't fast-forward
-  last = now
+// Sim and networking run off a worker timer: background tabs throttle
+// requestAnimationFrame (and page timers), which would freeze a host's game
+// for everyone. Worker timers keep running. Drawing stays on rAF.
+const ticker = new Worker(URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 1000 / 60)'])))
+let lastTick = performance.now()
+ticker.onmessage = () => {
+  const now = performance.now()
+  const elapsed = Math.min((now - lastTick) / 1000, 0.25)
+  lastTick = now
   const local = { left: input.left, right: input.right }
+  if (client) client.sendInput(local)
+  else runSim(elapsed, local)
+}
 
-  let events
-  if (client) {
-    client.sendInput(local)
-    events = receivedEvents
-    receivedEvents = []
-  } else {
-    events = runSim(elapsed, local)
-  }
-
-  draw(game, localId, events, elapsed)
+let lastFrame = performance.now()
+requestAnimationFrame(function frame(now) {
+  const elapsed = Math.min((now - lastFrame) / 1000, 0.25)
+  lastFrame = now
+  draw(game, localId, drawEvents, elapsed)
+  drawEvents = []
   requestAnimationFrame(frame)
 })
 
@@ -51,10 +55,9 @@ requestAnimationFrame(function frame(now) {
 function runSim(elapsed, local) {
   pending += elapsed
   const tick = 1 / config.tickRate
-  const events = []
   while (pending >= tick) {
     step(game, { ...remoteInputs, [localId]: local }, config)
-    events.push(...game.events)
+    drawEvents.push(...game.events)
     pending -= tick
     if (!room) continue
     unsentEvents.push(...game.events)
@@ -66,7 +69,6 @@ function runSim(elapsed, local) {
   if (game.winner && game.time - game.wonAt > RESTART_DELAY) {
     game = createGame(canyon, game.rockets.map(({ id, team }) => ({ id, team })))
   }
-  return events
 }
 
 inviteButton.onclick = async () => {
@@ -120,7 +122,7 @@ async function join(code) {
     client = await joinRoom(code, {
       onSnapshot(snapshot) {
         Object.assign(game, snapshot)
-        receivedEvents.push(...snapshot.events)
+        drawEvents.push(...snapshot.events)
       },
       onClose: backToSolo,
     })
