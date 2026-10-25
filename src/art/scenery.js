@@ -1,8 +1,8 @@
 import { FLAG_HEIGHT } from '../sim/game.js'
-import { COLOR, TEAM } from './theme.js'
-import { TAU, additive, glowDot } from './brush.js'
+import { COLOR, RAIN, SKIES, TEAM } from './theme.js'
+import { TAU, additive, chrome, glowDot } from './brush.js'
 
-// Things that stay put: dusk sky, distant mesas, sea, rock, landing pads, flags.
+// Things that stay put: sky, weather, distant mesas, sea, rock, landing pads, flags.
 
 // Parallax k: 0 = pinned to the screen, 1 = moves with the world.
 const SKY_LAYER = 0.1 // stars, suns
@@ -14,26 +14,32 @@ const MESA_LAYERS = [
   { k: 0.46, base: 0.88, rise: 200, size: 1, lit: 0.4 },
   { k: 0.62, base: 0.92, rise: 150, size: 1.2, lit: 0.6 },
 ]
-const SUNS = [
-  { x: 0.62, y: 0.7, r: 30 },
-  { x: 0.665, y: 0.735, r: 18 },
-]
+
+// weather: { time: key of SKIES, rain: boolean }
+export function randomWeather() {
+  const times = Object.keys(SKIES)
+  return { time: times[Math.floor(Math.random() * times.length)], rain: Math.random() < RAIN.chance }
+}
 
 // Random layout is generated once per map; render-only, so Math.random is fine.
 // Solids tagged `water` are drawn as sea; draw everything else first, then water().
-export function createScenery(map) {
+export function createScenery(map, weather) {
   const { width, height } = map
+  const sky = SKIES[weather.time]
+  if (!sky) throw new Error(`createScenery: unknown time "${weather.time}", expected one of ${Object.keys(SKIES)}`)
+  const { rain } = weather
+
   const stars = Array.from({ length: 180 }, () => ({
     x: rand(-500, width + 500),
     y: rand(0, height * 0.6),
     size: rand(0.6, 2),
     phase: rand(0, TAU),
   }))
-  const clouds = Array.from({ length: 7 }, () => ({
+  const clouds = Array.from({ length: rain ? 18 : 7 }, () => ({
     x: rand(-300, width + 300),
-    y: rand(0.3, 0.62) * height,
+    y: rand(rain ? 0.1 : 0.3, 0.62) * height,
     rx: rand(250, 600),
-    ry: rand(6, 16),
+    ry: rain ? rand(20, 60) : rand(6, 16),
   }))
   const ships = Array.from({ length: 3 }, (_, i) => ({
     y: rand(0.15, 0.5) * height,
@@ -43,7 +49,7 @@ export function createScenery(map) {
   }))
   const mesas = MESA_LAYERS.map((l, i) => {
     const base = height * l.base
-    return { ...l, base, color: COLOR.mesas[i], ...skyline(width, base, l) }
+    return { ...l, base, color: sky.mesas[i], ...skyline(width, base, { ...l, lit: Math.min(1, l.lit * sky.windows) }) }
   })
   const seas = map.solids
     .filter((s) => s.water)
@@ -61,42 +67,61 @@ export function createScenery(map) {
         len: rand(4, 16),
         phase: rand(0, TAU),
       })),
+      splashes: rain
+        ? Array.from({ length: Math.round(rect.w / 25) }, () => ({ x: rand(rect.x, rect.x + rect.w), speed: rand(0.8, 1.6), phase: rand(0, 1) }))
+        : [],
       shores: map.solids.filter((s) => !s.water && s.y + s.h === rect.y && s.x < rect.x + rect.w && s.x + s.w > rect.x),
     }))
+  const drops = rain
+    ? Array.from({ length: 260 }, (_, i) => ({ x: rand(0, 1), y: rand(0, 1), speed: rand(0.9, 1.4), near: i % 3 === 0 }))
+    : []
   const mirror = document.createElement('canvas')
+  let nextBolt = rand(3, 8)
+  let boltAt = -Infinity
 
   return {
+    weather,
+    sky,
+
     // cx, cy: camera center in world units.
     backdrop(ctx, cx, cy, clock) {
-      const sky = ctx.createLinearGradient(0, 0, 0, height)
-      for (const [at, color] of COLOR.sky) sky.addColorStop(at, color)
-      ctx.fillStyle = sky
+      const g = ctx.createLinearGradient(0, 0, 0, height)
+      for (const [at, color] of sky.sky) g.addColorStop(at, color)
+      ctx.fillStyle = g
       ctx.fillRect(0, 0, width, height)
 
       parallax(ctx, SKY_LAYER, cx, cy, map, () => {
-        ctx.fillStyle = COLOR.star
-        for (const s of stars) {
-          ctx.globalAlpha = (1 - s.y / (height * 0.6)) * (0.65 + 0.35 * Math.sin(clock * 2 + s.phase))
-          ctx.fillRect(s.x, s.y, s.size, s.size)
+        if (sky.stars && !rain) {
+          ctx.fillStyle = COLOR.star
+          for (const s of stars) {
+            ctx.globalAlpha = sky.stars * (1 - s.y / (height * 0.6)) * (0.65 + 0.35 * Math.sin(clock * 2 + s.phase))
+            ctx.fillRect(s.x, s.y, s.size, s.size)
+          }
+          ctx.globalAlpha = 1
         }
-        ctx.globalAlpha = 1
         additive(ctx, () => {
-          for (const s of SUNS) glowDot(ctx, s.x * width, s.y * height, s.r * 7, COLOR.sunGlow, 0.45)
+          for (const s of sky.suns) glowDot(ctx, s.x * width, s.y * height, s.r * 7, sky.sunGlow, sky.glow)
         })
-        ctx.fillStyle = COLOR.sun
-        for (const s of SUNS) {
+        ctx.fillStyle = sky.sun
+        for (const s of sky.suns) {
           ctx.beginPath()
           ctx.arc(s.x * width, s.y * height, s.r, 0, TAU)
           ctx.fill()
         }
       })
 
+      if (rain) {
+        ctx.fillStyle = sky.overcast
+        ctx.fillRect(0, 0, width, height)
+      }
+
       parallax(ctx, CLOUD_LAYER, cx, cy, map, () => {
+        const [top, bottom] = rain ? sky.rainCloud : sky.cloud
         for (const c of clouds) {
-          const g = ctx.createLinearGradient(0, c.y - c.ry, 0, c.y + c.ry)
-          g.addColorStop(0, COLOR.cloud[0])
-          g.addColorStop(1, COLOR.cloud[1])
-          ctx.fillStyle = g
+          const cg = ctx.createLinearGradient(0, c.y - c.ry, 0, c.y + c.ry)
+          cg.addColorStop(0, top)
+          cg.addColorStop(1, bottom)
+          ctx.fillStyle = cg
           ctx.beginPath()
           ctx.ellipse(c.x, c.y, c.rx, c.ry, 0, 0, TAU)
           ctx.fill()
@@ -117,11 +142,11 @@ export function createScenery(map) {
           ctx.fill(m.path)
           const fog = m.rise * 0.5
           const haze = ctx.createLinearGradient(0, m.base - fog, 0, m.base)
-          haze.addColorStop(0, COLOR.haze[0])
-          haze.addColorStop(1, COLOR.haze[1])
+          haze.addColorStop(0, sky.haze[0])
+          haze.addColorStop(1, sky.haze[1])
           ctx.fillStyle = haze
           ctx.fillRect(-1500, m.base - fog, width + 3000, fog)
-          ctx.fillStyle = COLOR.haze[1]
+          ctx.fillStyle = sky.haze[1]
           ctx.fillRect(-1500, m.base, width + 3000, 2000)
 
           additive(ctx, () => {
@@ -139,8 +164,39 @@ export function createScenery(map) {
     },
 
     water(ctx, cx, clock) {
-      const sunX = SUNS[0].x * width + (cx - width / 2) * (1 - SKY_LAYER)
-      for (const sea of seas) drawSea(ctx, sea, sunX, clock, mirror)
+      const sunX = sky.suns[0].x * width + (cx - width / 2) * (1 - SKY_LAYER)
+      for (const sea of seas) drawSea(ctx, sea, sky, rain, sunX, clock, mirror)
+    },
+
+    // Screen space, over everything but the HUD. ox, oy: camera offset in pixels, so rain drifts past.
+    rain(ctx, w, h, ox, oy, clock) {
+      if (!rain) return
+      const len = h * 0.04
+      const wind = 0.25
+      ctx.strokeStyle = RAIN.drop
+      ctx.lineCap = 'round'
+      for (const d of drops) {
+        const k = d.near ? 1 : 0.5
+        const y = (((d.y * h + clock * d.speed * h - oy * k) % h) + h) % h
+        const x = (((d.x * w - y * wind - ox * k) % w) + w) % w
+        ctx.lineWidth = (d.near ? 1.6 : 0.8) * (h / 600)
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        ctx.lineTo(x + len * wind * k, y - len * k)
+        ctx.stroke()
+      }
+
+      if (clock > nextBolt) {
+        boltAt = clock
+        nextBolt = clock + rand(5, 12)
+      }
+      const t = clock - boltAt
+      if (t < 0.35) {
+        ctx.globalAlpha = t < 0.08 || (t > 0.15 && t < 0.22) ? 1 : 0.3 // double flicker
+        ctx.fillStyle = RAIN.lightning
+        ctx.fillRect(0, 0, w, h)
+        ctx.globalAlpha = 1
+      }
     },
   }
 }
@@ -173,7 +229,7 @@ function skyline(width, base, { rise, size, lit }) {
         windows.push({ x: at + rand(-0.2, 0.2) * w, y: rand(top + 12 * size, base - 8) })
       }
     }
-    if (lit && base - top > rise * 0.75) beacons.push({ x: x + w / 2, y: top - 2, phase: rand(0, TAU) })
+    if (size >= 0.8 && base - top > rise * 0.75) beacons.push({ x: x + w / 2, y: top - 2, phase: rand(0, TAU) })
     x += w + rand(0, 160) * size
     path.lineTo(x, base)
   }
@@ -183,7 +239,7 @@ function skyline(width, base, { rise, size, lit }) {
 }
 
 // Mirrors what's already drawn above the surface, in wavy pixel rows, then tints it.
-function drawSea(ctx, { rect, ripples, glints, shores }, sunX, clock, mirror) {
+function drawSea(ctx, { rect, ripples, glints, splashes, shores }, sky, rain, sunX, clock, mirror) {
   const m = ctx.getTransform()
   const top = Math.round(rect.y * m.d + m.f)
   const bottom = Math.min(ctx.canvas.height, Math.round((rect.y + rect.h) * m.d + m.f))
@@ -199,16 +255,17 @@ function drawSea(ctx, { rect, ripples, glints, shores }, sunX, clock, mirror) {
   ctx.save()
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   const band = 2
+  const choppy = rain ? 2.5 : 1
   for (let y = 0; y < h; y += band) {
     const depth = y / m.d // world units below the surface
-    const dx = Math.sin(clock * 2 + depth * 0.25) * (0.5 + depth * 0.06) * m.a
+    const dx = Math.sin(clock * 2 * choppy + depth * 0.25) * (0.5 + depth * 0.06) * choppy * m.a
     ctx.drawImage(mirror, 0, Math.max(0, h - y - band), w, band, dx - 8, top + y, w + 16, band)
   }
   ctx.restore()
 
   const tint = ctx.createLinearGradient(0, rect.y, 0, rect.y + rect.h)
-  tint.addColorStop(0, COLOR.water[0])
-  tint.addColorStop(1, COLOR.water[1])
+  tint.addColorStop(0, sky.water[0])
+  tint.addColorStop(1, sky.water[1])
   ctx.fillStyle = tint
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
 
@@ -216,15 +273,26 @@ function drawSea(ctx, { rect, ripples, glints, shores }, sunX, clock, mirror) {
   for (const r of ripples) ctx.fillRect(r.x + Math.sin(clock * 1.5 + r.phase) * 6, rect.y + r.depth, r.len, 1)
 
   additive(ctx, () => {
-    ctx.fillStyle = COLOR.glint
+    ctx.fillStyle = sky.glint
     for (const g of glints) {
-      ctx.globalAlpha = Math.max(0, Math.sin(clock * 5 + g.phase))
+      ctx.globalAlpha = Math.max(0, Math.sin(clock * 5 + g.phase)) * (rain ? 0.25 : 1)
       ctx.fillRect(sunX + g.dx * (0.4 + g.depth / rect.h), rect.y + g.depth, g.len, 1.2)
     }
     ctx.globalAlpha = 1
   })
 
-  ctx.fillStyle = COLOR.waterLine
+  ctx.strokeStyle = RAIN.splash
+  ctx.lineWidth = 0.8
+  for (const s of splashes) {
+    const t = (clock * s.speed + s.phase) % 1
+    ctx.globalAlpha = 1 - t
+    ctx.beginPath()
+    ctx.ellipse(s.x, rect.y + 2, 1 + t * 9, 0.5 + t * 2, 0, 0, TAU)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+
+  ctx.fillStyle = sky.waterLine
   ctx.fillRect(rect.x, rect.y, rect.w, 1)
   ctx.fillStyle = COLOR.foam
   for (const s of shores) {
@@ -234,17 +302,18 @@ function drawSea(ctx, { rect, ripples, glints, shores }, sunX, clock, mirror) {
   ctx.globalAlpha = 1
 }
 
-export function drawRock(ctx, s) {
+// sky: palette from SKIES, so rock is lit to match the time of day.
+export function drawRock(ctx, s, sky = SKIES.dusk) {
   const g = ctx.createLinearGradient(0, s.y, 0, s.y + s.h)
-  g.addColorStop(0, COLOR.rock[0])
-  g.addColorStop(Math.min(1, 20 / s.h), COLOR.rock[1])
-  g.addColorStop(1, COLOR.rock[2])
+  g.addColorStop(0, sky.rock[0])
+  g.addColorStop(Math.min(1, 20 / s.h), sky.rock[1])
+  g.addColorStop(1, sky.rock[2])
   ctx.fillStyle = g
   ctx.fillRect(s.x, s.y, s.w, s.h)
   ctx.fillStyle = COLOR.strata
   for (let y = s.y + 14; y < s.y + s.h; y += 17) ctx.fillRect(s.x, y, s.w, 1.5)
   ctx.fillRect(s.x + s.w - 4, s.y, 4, s.h)
-  ctx.fillStyle = COLOR.rockLip
+  ctx.fillStyle = sky.rockLip
   ctx.fillRect(s.x, s.y, s.w, 3)
 }
 
@@ -281,9 +350,18 @@ export function drawPad(ctx, { x, y, w, h }, team, clock) {
   }
   ctx.restore()
 
+  // Googie lamp posts with ball lamps
   const blink = Math.sin(clock * 4) > 0 ? 1 : 0.35
+  for (const lx of [x + 5, x + w - 5]) {
+    ctx.fillStyle = chrome(ctx, lx - 1, lx + 1)
+    ctx.fillRect(lx - 1, y - 16, 2, 16)
+    ctx.fillStyle = accent
+    ctx.beginPath()
+    ctx.arc(lx, y - 18, 3, 0, TAU)
+    ctx.fill()
+  }
   additive(ctx, () => {
-    for (const lx of [x + 5, x + w - 5]) glowDot(ctx, lx, y - 1, 9, accent, blink)
+    for (const lx of [x + 5, x + w - 5]) glowDot(ctx, lx, y - 18, 12, accent, blink)
   })
 }
 

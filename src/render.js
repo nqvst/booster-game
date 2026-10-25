@@ -1,6 +1,6 @@
 import { flagHome } from './sim/game.js'
 import { COLOR, FONT, TEAM } from './art/theme.js'
-import { createScenery, drawFlag, drawPad, drawRock } from './art/scenery.js'
+import { createScenery, drawFlag, drawPad, drawRock, randomWeather } from './art/scenery.js'
 import { drawCannon, drawLaser, drawRocket } from './art/sprites.js'
 import { createEffects } from './art/effects.js'
 
@@ -35,7 +35,7 @@ export function createRenderer(canvas, config) {
 
     const { map } = game
     if (sceneryFor !== game) {
-      scenery = createScenery(map)
+      scenery = createScenery(map, randomWeather())
       sceneryFor = game
     }
     const me = game.rockets.find((r) => r.id === localId)
@@ -54,7 +54,7 @@ export function createRenderer(canvas, config) {
     ctx.setTransform(scale, 0, 0, scale, w / 2 - cx * scale, h / 2 - cy * scale)
 
     scenery.backdrop(ctx, cx, cy, clock)
-    for (const s of map.solids) if (!s.water) drawRock(ctx, s)
+    for (const s of map.solids) if (!s.water) drawRock(ctx, s, scenery.sky)
     for (const [team, base] of Object.entries(map.bases)) drawPad(ctx, base.pad, team, clock)
 
     for (const [team, t] of Object.entries(game.teams)) {
@@ -63,11 +63,13 @@ export function createRenderer(canvas, config) {
       drawFlag(ctx, at.x, at.y, team, clock)
     }
 
-    for (const c of game.cannons) drawCannon(ctx, c, c.cooldown > config.cannon.fireInterval - MUZZLE_FLASH)
+    for (const c of game.cannons) drawCannon(ctx, c, c.cooldown > config.cannon.fireInterval - MUZZLE_FLASH, clock)
     for (const b of game.bullets) drawLaser(ctx, b)
     for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset)
     effects.draw(ctx, dt)
     scenery.water(ctx, cx, clock) // last: reflects everything above it
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    scenery.rain(ctx, w, h, cx * scale, cy * scale, clock)
 
     // HUD (CSS pixels)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -100,10 +102,12 @@ export function createRenderer(canvas, config) {
       ctx.shadowBlur = 10
       ctx.fillText(`${TEAM[team].label} ${t.score}`, cw / 2 + (i - (teams.length - 1) / 2) * 140, 14)
     })
-    ctx.shadowBlur = 0
+    ctx.shadowColor = COLOR.textShadow // readable on the bright day sky
+    ctx.shadowBlur = 4
     ctx.fillStyle = COLOR.textDim
     ctx.font = `600 11px ${FONT}`
     ctx.fillText(`FIRST TO ${config.rules.capturesToWin}`, cw / 2, 38)
+    ctx.shadowBlur = 0
 
     const message = game.winner
       ? `${TEAM[game.winner].label} WINS`

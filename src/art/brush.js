@@ -1,3 +1,5 @@
+import { COLOR } from './theme.js'
+
 // Small painting helpers shared by the art files.
 
 export const TAU = Math.PI * 2
@@ -8,6 +10,13 @@ export function shaded(ctx, x0, x1, [light, mid, shadow]) {
   g.addColorStop(0, mid)
   g.addColorStop(0.3, light)
   g.addColorStop(1, shadow)
+  return g
+}
+
+// Polished chrome across x0..x1: hard light/dark bands.
+export function chrome(ctx, x0, x1) {
+  const g = ctx.createLinearGradient(x0, 0, x1, 0)
+  for (const [at, color] of COLOR.chrome) g.addColorStop(at, color)
   return g
 }
 
