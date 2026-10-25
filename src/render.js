@@ -39,6 +39,13 @@ export function createRenderer(canvas, config) {
       sceneryFor = game
     }
     const me = game.rockets.find((r) => r.id === localId)
+    if (!me) {
+      // Joining: no rocket until the host's first snapshot.
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.fillStyle = COLOR.void
+      ctx.fillRect(0, 0, w, h)
+      return
+    }
     const scale = Math.max(w, h) / config.view.size
     cam ??= { x: me.x, y: me.y }
     const follow = Math.min(1, dt * 6)
@@ -65,7 +72,7 @@ export function createRenderer(canvas, config) {
 
     for (const c of game.cannons) drawCannon(ctx, c, c.cooldown > config.cannon.fireInterval - MUZZLE_FLASH, clock)
     for (const b of game.bullets) drawLaser(ctx, b)
-    for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset)
+    for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset, r === me)
     effects.draw(ctx, dt)
     scenery.water(ctx, cx, clock) // last: reflects everything above it
     ctx.setTransform(1, 0, 0, 1, 0, 0)

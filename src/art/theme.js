@@ -11,6 +11,7 @@ export const TEAM = {
 
 export const COLOR = {
   outline: '#2a2420',
+  meOutline: '#ffffff', // local player's rocket
   cream: '#f6eedb',
   creamShade: '#cdbf9f',
   gunmetal: GUNMETAL,

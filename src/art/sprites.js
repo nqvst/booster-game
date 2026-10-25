@@ -10,7 +10,8 @@ import { TAU, additive, chrome, glowDot, shaded } from './brush.js'
 const BODY = new Path2D('M0 -26 C5 -22 8 -14 8 -6 L8 6 Q8 9 5 9 L-5 9 Q-8 9 -8 6 L-8 -6 C-8 -14 -5 -22 0 -26 Z')
 const LASER_LENGTH = 24
 
-export function drawRocket(ctx, r, engineOffset) {
+// isMe: outline the local player's rocket so it stands out in multiplayer.
+export function drawRocket(ctx, r, engineOffset, isMe = false) {
   const { accent, hull } = TEAM[r.team]
   ctx.save()
   ctx.translate(r.x, r.y)
@@ -62,8 +63,8 @@ export function drawRocket(ctx, r, engineOffset) {
   ctx.fillStyle = COLOR.gloss
   ctx.fillRect(-5.5, -18, 1.5, 24)
   ctx.restore()
-  ctx.strokeStyle = COLOR.outline
-  ctx.lineWidth = 1
+  ctx.strokeStyle = isMe ? COLOR.meOutline : COLOR.outline
+  ctx.lineWidth = isMe ? 1.5 : 1
   ctx.stroke(BODY)
 
   // Antenna

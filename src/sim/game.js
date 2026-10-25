@@ -17,16 +17,38 @@ export function createGame(map, players) {
     events: [], // this tick only: { type: 'explode' | 'capture', ... }
     map: { ...map, solids: [...map.solids, ...pads, ...map.cannons.map(cannonPedestal)] },
     teams: Object.fromEntries(Object.keys(map.bases).map((team) => [team, { score: 0, flagCarrier: null }])),
-    rockets: players.map(({ id, team }, i) => ({
-      id,
-      team,
-      slot: players.slice(0, i).filter((p) => p.team === team).length,
-    })),
+    rockets: [],
     cannons: map.cannons.map((c) => ({ ...c, aim: -Math.PI / 2, cooldown: 0 })),
     bullets: [],
   }
-  for (const r of game.rockets) spawnRocket(r, map.bases[r.team].pad)
+  for (const p of players) addPlayer(game, p)
   return game
+}
+
+// Spawn slots are spaced along the team's pad; a leaving player frees theirs.
+export function maxPlayersPerTeam(game, team) {
+  return Math.floor((game.map.bases[team].pad.w - 40) / 40) + 1
+}
+
+export function addPlayer(game, { id, team }) {
+  const taken = new Set(game.rockets.filter((r) => r.team === team).map((r) => r.slot))
+  let slot = 0
+  while (taken.has(slot)) slot++
+  if (slot >= maxPlayersPerTeam(game, team)) throw new Error(`Team ${team} is full, can't add player ${id}`)
+  const rocket = { id, team, slot }
+  spawnRocket(rocket, game.map.bases[team].pad)
+  game.rockets.push(rocket)
+}
+
+export function removePlayer(game, id) {
+  for (const team of Object.values(game.teams)) if (team.flagCarrier === id) team.flagCarrier = null
+  game.rockets = game.rockets.filter((r) => r.id !== id)
+}
+
+// Everything that changes during play (map is static and rebuilt by each client).
+export function snapshotOf(game) {
+  const { time, winner, wonAt, teams, rockets, cannons, bullets } = game
+  return { time, winner, wonAt, teams, rockets, cannons, bullets }
 }
 
 // Foot of the flag pole when the flag is home.
