@@ -61,7 +61,7 @@ function resolveContact(r, map, { safeLandingSpeed, safeSlideSpeed, safeLandingA
     const [x, y] = toWorld(r, p)
     const rect = solidAt(map, x, y)
     if (!rect) continue
-    if (y - rect.y > MAX_FOOT_SINK) return true
+    if (rect.water || y - rect.y > MAX_FOOT_SINK) return true // sea is never a landing spot
     surface = Math.min(surface, rect.y)
   }
   if (surface === Infinity) return false

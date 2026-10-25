@@ -72,6 +72,14 @@ function runUntil({ game, config }, done, seconds) {
   assert(runUntil(t, () => !t.r.alive, 1), 'tilted landing should crash')
 }
 
+// Even a gentle touchdown on water crashes.
+{
+  const sea = { ...flat, solids: [{ ...flat.solids[0], water: true }] }
+  const t = setup(sea)
+  Object.assign(t.r, { x: 1000, y: 900 - 18 - 10, landed: false })
+  assert(runUntil(t, () => !t.r.alive, 1), 'landing on water should crash')
+}
+
 // Hard landing crashes, respawns after respawnSeconds.
 {
   const t = setup()

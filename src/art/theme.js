@@ -26,7 +26,19 @@ export const COLOR = {
   star: '#fff6e0',
   sun: '#fff4d6',
   sunGlow: '#ffb060',
-  mesas: ['#3d2740', '#5e3236'], // far → near
+  cloud: ['rgba(60,36,70,0.7)', 'rgba(240,130,90,0.7)'], // shadowed top, sunlit underside
+  mesas: ['#9a5060', '#6e3a52', '#4a2843', '#2e1a30'], // far → near
+  haze: ['rgba(240,130,90,0)', 'rgba(240,130,90,0.3)'], // fog at the foot of each mesa layer
+  windowLight: '#ffcf7a',
+  beacon: '#ff4a3a',
+  shipLight: '#fff2d0',
+
+  water: ['rgba(20,30,70,0.2)', 'rgba(6,10,28,0.8)'], // tint over the reflection: surface → depth
+  waterLine: 'rgba(255,210,170,0.6)',
+  ripple: 'rgba(255,220,190,0.12)',
+  glint: '#ffe2b0',
+  foam: 'rgba(255,240,220,0.7)',
+
   rock: ['#c98a55', '#9a5a36', '#6e3c26'], // lit top → base
   rockLip: '#e8b07a',
   strata: 'rgba(0,0,0,0.12)',

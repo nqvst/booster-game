@@ -1,6 +1,6 @@
 import { flagHome } from './sim/game.js'
 import { COLOR, FONT, TEAM } from './art/theme.js'
-import { createBackdrop, drawFlag, drawPad, drawRock } from './art/scenery.js'
+import { createScenery, drawFlag, drawPad, drawRock } from './art/scenery.js'
 import { drawCannon, drawLaser, drawRocket } from './art/sprites.js'
 import { createEffects } from './art/effects.js'
 
@@ -12,7 +12,8 @@ export function createRenderer(canvas, config) {
   const ctx = canvas.getContext('2d')
   const touch = matchMedia('(pointer: coarse)').matches
   const effects = createEffects()
-  let backdrop = null
+  let scenery = null
+  let sceneryFor = null // the game it was laid out for
   let banner = null
   let clock = 0
   let cam = null
@@ -33,8 +34,9 @@ export function createRenderer(canvas, config) {
     }
 
     const { map } = game
-    if (backdrop?.width !== map.width || backdrop?.height !== map.height) {
-      backdrop = { width: map.width, height: map.height, draw: createBackdrop(map) }
+    if (sceneryFor !== game) {
+      scenery = createScenery(map)
+      sceneryFor = game
     }
     const me = game.rockets.find((r) => r.id === localId)
     const scale = Math.max(w, h) / config.view.size
@@ -51,8 +53,8 @@ export function createRenderer(canvas, config) {
     ctx.fillRect(0, 0, w, h)
     ctx.setTransform(scale, 0, 0, scale, w / 2 - cx * scale, h / 2 - cy * scale)
 
-    backdrop.draw(ctx, cx, cy, clock)
-    for (const s of map.solids) drawRock(ctx, s)
+    scenery.backdrop(ctx, cx, cy, clock)
+    for (const s of map.solids) if (!s.water) drawRock(ctx, s)
     for (const [team, base] of Object.entries(map.bases)) drawPad(ctx, base.pad, team, clock)
 
     for (const [team, t] of Object.entries(game.teams)) {
@@ -65,6 +67,7 @@ export function createRenderer(canvas, config) {
     for (const b of game.bullets) drawLaser(ctx, b)
     for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset)
     effects.draw(ctx, dt)
+    scenery.water(ctx, cx, clock) // last: reflects everything above it
 
     // HUD (CSS pixels)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)

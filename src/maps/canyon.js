@@ -4,7 +4,7 @@ export const canyon = {
   width: 3200,
   height: 1400,
   solids: [
-    { x: 0, y: 1300, w: 3200, h: 100 }, // ground
+    { x: 0, y: 1300, w: 3200, h: 100, water: true }, // sea: touching it crashes
     { x: 700, y: 820, w: 220, h: 40 }, // floating slab
     { x: 1300, y: 1050, w: 600, h: 250 }, // mountain
     { x: 1420, y: 900, w: 360, h: 150 },

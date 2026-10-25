@@ -1,11 +1,11 @@
 import { config } from '../config.js'
 import { canyon } from '../maps/canyon.js'
 import { COLOR, FONT } from './theme.js'
-import { createBackdrop, drawFlag, drawPad, drawRock } from './scenery.js'
+import { createScenery, drawFlag, drawPad, drawRock } from './scenery.js'
 import { drawCannon, drawLaser, drawRocket } from './sprites.js'
 import { createEffects } from './effects.js'
 
-// Art preview: every sprite on one screen, animated, over the real backdrop.
+// Art preview: every sprite on one screen, animated, over the real scenery.
 // `npm run dev`, open /art.html; edits in src/art/ reload instantly.
 // New sprite → add a cell here.
 
@@ -38,7 +38,7 @@ const cells = [
 
 const canvas = document.querySelector('canvas')
 const ctx = canvas.getContext('2d')
-const backdrop = createBackdrop(canyon)
+const scenery = createScenery(canyon)
 const effects = createEffects()
 let clock = 0
 let nextBoom = 0
@@ -56,10 +56,13 @@ requestAnimationFrame(function frame(now) {
     canvas.height = h
   }
 
-  // Backdrop scaled to fill the screen
+  // Whole map scaled to fill the screen
   const fit = Math.max(w / canyon.width, h / canyon.height)
   ctx.setTransform(fit, 0, 0, fit, 0, 0)
-  backdrop(ctx, canyon.width / 2, canyon.height / 2, clock)
+  scenery.backdrop(ctx, canyon.width / 2, canyon.height / 2, clock)
+  for (const s of canyon.solids) if (!s.water) drawRock(ctx, s)
+  for (const [team, base] of Object.entries(canyon.bases)) drawPad(ctx, base.pad, team, clock)
+  scenery.water(ctx, canyon.width / 2, clock)
 
   const zoom = ZOOM * dpr
   const cols = Math.max(1, Math.floor(w / (CELL * zoom)))
