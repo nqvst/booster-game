@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Booster</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0c1230;
+        font-family: system-ui, sans-serif;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100dvh;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      #tune-toggle {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        font-size: 18px;
+        background: rgba(0, 0, 0, 0.4);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        padding: 4px 8px;
+      }
+      #tuning {
+        position: fixed;
+        top: 48px;
+        right: 8px;
+        max-height: calc(100dvh - 64px);
+        overflow-y: auto;
+        background: rgba(10, 14, 30, 0.9);
+        color: #dde3f0;
+        font-size: 12px;
+        padding: 8px;
+        border-radius: 6px;
+      }
+      #tuning fieldset {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        margin: 0 0 8px;
+      }
+      #tuning label {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 3px 0;
+      }
+      #tuning input[type='number'] {
+        width: 70px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas></canvas>
+    <button id="tune-toggle" aria-label="Tuning panel">⚙</button>
+    <div id="tuning" hidden></div>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
