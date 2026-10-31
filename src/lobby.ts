@@ -9,7 +9,7 @@ import { TEAMS } from './maps/parse.ts'
 // joiners as { type: 'lobby', players, mapName } until the match starts.
 export const TEAM_SIZE = 4 // maps.test.ts checks every PvP pad has room for this many
 
-export type LobbyActions = { onSwitch(id: string): void; onStart(): void; onInvite(event: Event): void }
+type LobbyActions = { onSwitch(id: string): void; onStart(): void; onInvite(event: Event): void }
 type LobbyOptions = { localId: string; code: string; actions: LobbyActions | null }
 
 const countOn = (players: RoomPlayer[], team: Team) => players.filter((p) => p.team === team).length

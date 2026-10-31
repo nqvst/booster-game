@@ -7,7 +7,7 @@ import type { Mode, Team } from './maps/parse.ts'
 export type RoomPlayer = { id: string; name: string; team: Team }
 export type RosterMessage = { type: 'roster'; mapName: string; mode: Mode; players: RoomPlayer[] }
 export type LobbyMessage = { type: 'lobby'; mapName: string; players: RoomPlayer[] }
-export type HostMessage = RosterMessage | LobbyMessage | { type: 'full' } | { type: 'version' }
+type HostMessage = RosterMessage | LobbyMessage | { type: 'full' } | { type: 'version' }
 
 export type HostHandlers = {
   onJoin(id: string, name: string): boolean // false refuses: the room is full
@@ -16,7 +16,7 @@ export type HostHandlers = {
   onError(err: Error): void
 }
 
-export type JoinHandlers = {
+type JoinHandlers = {
   onSnapshot(buffer: ArrayBuffer): void
   onRoster(roster: RosterMessage): void
   onLobby(lobby: LobbyMessage): void
@@ -100,7 +100,7 @@ export async function hostRoom(handlers: HostHandlers): Promise<Room> {
         // msg: ArrayBuffer (snapshot) or an object, sent as JSON text.
         broadcast: (msg) => {
           const data = msg instanceof ArrayBuffer ? msg : JSON.stringify(msg)
-          for (const conn of players.keys()) conn.send(data)
+          for (const conn of players.keys()) send(conn, data)
         },
       })
     })
@@ -127,8 +127,13 @@ function acceptPlayer(players: Players, conn: DataConnection, handlers: HostHand
   conn.on('error', handlers.onError)
 }
 
+// send can return a promise; a failed one says so instead of going unnoticed.
+function send(conn: DataConnection, data: ArrayBuffer | string): void {
+  Promise.resolve(conn.send(data)).catch((err: unknown) => console.error('Sending to', conn.peer, 'failed', err))
+}
+
 function refuse(conn: DataConnection, type: 'full' | 'version'): void {
-  if (conn.serialization === 'raw') conn.send(JSON.stringify({ type }))
+  if (conn.serialization === 'raw') send(conn, JSON.stringify({ type }))
   setTimeout(() => conn.close(), 500)
 }
 
@@ -184,7 +189,7 @@ function inputSender(conn: DataConnection): (input: Input) => void {
     const bits = (left ? 1 : 0) | (right ? 2 : 0)
     const now = performance.now()
     if (!conn.open || (bits === sent && now - sentAt < INPUT_HEARTBEAT_MS)) return
-    conn.send(new Uint8Array([bits]).buffer)
+    send(conn, new Uint8Array([bits]).buffer)
     sent = bits
     sentAt = now
   }

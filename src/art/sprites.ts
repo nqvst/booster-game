@@ -13,8 +13,8 @@ import type { ShownBullet, ShownRocket } from '../sim/game.ts'
 const BODY = new Path2D('M0 -26 C5 -22 8 -14 8 -6 L8 6 Q8 9 5 9 L-5 9 Q-8 9 -8 6 L-8 -6 C-8 -14 -5 -22 0 -26 Z')
 const LASER_LENGTH = 24
 
-export type DrawnRocket = Pick<ShownRocket, 'x' | 'y' | 'team' | 'angle' | 'input'>
-export type DrawnCannon = Pick<Cannon, 'x' | 'y' | 'team' | 'aim'>
+type DrawnRocket = Pick<ShownRocket, 'x' | 'y' | 'team' | 'angle' | 'input'>
+type DrawnCannon = Pick<Cannon, 'x' | 'y' | 'team' | 'aim'>
 
 // isMe: outline the local player's rocket so it stands out in multiplayer.
 export function drawRocket(ctx: CanvasRenderingContext2D, r: DrawnRocket, engineOffset: number, isMe = false) {

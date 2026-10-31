@@ -17,5 +17,5 @@
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "test", "worker", "vite.config.ts"]
+  "include": ["src", "test", "worker", "scripts", "vite.config.ts"]
 }

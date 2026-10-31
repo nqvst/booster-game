@@ -9,9 +9,9 @@ import { cannonPedestal, stepBullets, stepCannons } from './cannon.ts'
 // state, so it can run unchanged on a server or in lockstep between peers.
 // All state is plain data; src/snapshot.ts packs what joiners need into bytes.
 
-export type NewPlayer = { id: string; team: Team; name?: string }
+type NewPlayer = { id: string; team: Team; name?: string }
 
-export type TeamState = {
+type TeamState = {
   score: number
   flagCarrier: string | null // rocket id
   flag: boolean // whether this team has a flag at all, see hasFlag
@@ -39,7 +39,7 @@ export type GameView = Omit<Game, 'rockets' | 'bullets'> & { rockets: ShownRocke
 
 export const FLAG_HEIGHT = 40
 // PvE: players are blue, the computer is red and only has turrets. PvP: both teams are players.
-export const CPU_TEAM = 'red'
+const CPU_TEAM = 'red'
 
 // PvE has one flag, the computer's: players steal it, the computer scores by shooting players down.
 export function hasFlag(mode: Mode, team: Team): boolean {

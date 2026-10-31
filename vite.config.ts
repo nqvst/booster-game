@@ -67,7 +67,8 @@ function readBody(req: IncomingMessage) {
 
 // Pretty JSON, but each rect / cannon on one line so diffs stay readable.
 function formatMap(map: GameMap) {
-  return JSON.stringify(map, null, 2).replace(/\{[^{}[\]]*\}/g, (obj) => JSON.stringify(JSON.parse(obj))) + '\n'
+  const pretty = JSON.stringify(map, null, 2).replace(/\{[^{}[\]]*\}/g, (obj) => JSON.stringify(JSON.parse(obj)))
+  return `${pretty}\n`
 }
 
 function send(res: ServerResponse, status: number, body: unknown) {

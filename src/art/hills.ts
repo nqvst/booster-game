@@ -20,7 +20,7 @@ type Layer = (typeof LAYERS)[number]
 type Beacon = Point & { phase: number; tower?: boolean }
 type Skyline = { path: Path2D; windows: Point[]; beacons: Beacon[] }
 type Hill = { x: number; w: number; top: number; base: number; size: number }
-export type HillLayer = ReturnType<typeof layoutHills>[number]
+type HillLayer = ReturnType<typeof layoutHills>[number]
 
 const SHAPES: Record<HillShape, (width: number, layer: Layer) => Skyline> = { butte, canopy, island }
 

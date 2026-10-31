@@ -1,4 +1,4 @@
-import { propBounds } from '../art/props/index.ts'
+import { propBounds } from '../art/props/boxes.ts'
 import { MIN_PAD_WIDTH, PROP_KINDS } from '../maps/parse.ts'
 import type { CannonSpot, GameMap, Prop, PropKind, Rect, Solid, SolidKind } from '../maps/parse.ts'
 import { cannonPedestal } from '../sim/cannon.ts'
@@ -11,7 +11,7 @@ export type View = Point & { zoom: number }
 export type RectItem = { kind: 'solid' | 'pad'; obj: Solid }
 export type StandingItem = { kind: 'cannon'; obj: CannonSpot } | { kind: 'prop'; obj: Prop }
 export type Item = RectItem | StandingItem
-export type BlockTool = 'rock' | SolidKind
+type BlockTool = 'rock' | SolidKind
 export type PlacingTool = 'cannon' | BlockTool | PropKind
 export type Tool = 'select' | PlacingTool
 export type Edges = { l: boolean; r: boolean; t: boolean; b: boolean }

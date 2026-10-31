@@ -27,7 +27,7 @@ const BLOCK = { w: 80, h: 40 } // cast concrete blocks, staggered like brickwork
 const PLATE = { h: 30, rivet: 20 } // steel plates, riveted along the seams
 const STRIPE = 14 // hazard stripe width
 const PANEL = 48 // cream wall panels
-const TRIM_EVERY = 4 // panel rows per orange trim band
+const TRIM_EVERY_ROWS = 4 // panel rows per orange trim band
 const PANE = 32 // glass block size
 const BOARD = 12 // plank height
 const HULL_PLATE = { w: 90, h: 36 }
@@ -158,7 +158,7 @@ function drawPanel(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
       }
       rivets(ctx, y + 5, { x0: s.x + 5, x1: s.x + s.w, step: PANEL })
       rivets(ctx, y + PANEL - 6, { x0: s.x + 5, x1: s.x + s.w, step: PANEL })
-      if (row % TRIM_EVERY === TRIM_EVERY - 1) {
+      if (row % TRIM_EVERY_ROWS === TRIM_EVERY_ROWS - 1) {
         ctx.fillStyle = COLOR.trim
         ctx.fillRect(s.x, y + PANEL - 8, s.w, 6)
       }

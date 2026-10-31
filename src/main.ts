@@ -17,9 +17,9 @@ import { encodeSnapshot } from './snapshot.ts'
 import { createRemoteGame } from './remote-game.ts'
 
 const LOCAL_ID = 'host'
-const RESTART_DELAY = 4
-const SNAPSHOT_EVERY = 6 // ticks → 20 Hz at 120 tick rate. Joiners smooth between them (remote-game.ts)
-const LOBBY_EVERY = 1 // seconds between lobby broadcasts; they also tell joiners the host is still there
+const RESTART_DELAY_SECONDS = 4
+const SNAPSHOT_EVERY_TICKS = 6 // ticks → 20 Hz at 120 tick rate. Joiners smooth between them (remote-game.ts)
+const LOBBY_EVERY_SECONDS = 1 // between lobby broadcasts; they also tell joiners the host is still there
 
 const canvas = find<HTMLCanvasElement>(document, 'canvas')
 const ui = {
@@ -89,13 +89,13 @@ function runSim(sim: Game, elapsed: number, local: Input) {
     pending -= tick
     if (!room) continue
     unsentEvents.push(...sim.events)
-    if (++ticksSinceSnapshot < SNAPSHOT_EVERY) continue
+    if (++ticksSinceSnapshot < SNAPSHOT_EVERY_TICKS) continue
     sendRoster(room, sim)
     room.broadcast(encodeSnapshot(sim, unsentEvents))
     ticksSinceSnapshot = 0
     unsentEvents = []
   }
-  if (sim.winner && sim.wonAt !== null && sim.time - sim.wonAt > RESTART_DELAY) {
+  if (sim.winner && sim.wonAt !== null && sim.time - sim.wonAt > RESTART_DELAY_SECONDS) {
     if (mode === 'pvp') openLobby()
     else newGame()
   }
@@ -196,7 +196,7 @@ function broadcastLobby(activeRoom: Room, lobbyMap: string) {
 
 function keepLobbyAlive(activeRoom: Room, elapsed: number) {
   sinceLobby += elapsed
-  if (sinceLobby >= LOBBY_EVERY && mapName) broadcastLobby(activeRoom, mapName)
+  if (sinceLobby >= LOBBY_EVERY_SECONDS && mapName) broadcastLobby(activeRoom, mapName)
 }
 
 const hostHandlers: HostHandlers = {
@@ -316,7 +316,19 @@ function backToMenu(reason?: string) {
 }
 
 function openMenu(code: string) {
-  showMenu(ui.menu, { joinCode: code, rules: config.rules, handlers: { onPick: start, onJoin: (name) => join(code, name) } })
+  const handlers = {
+    onPick: (pickedMode: Mode, name: string) => run(start(pickedMode, name), 'Starting the game'),
+    onJoin: (name: string) => run(join(code, name), `Joining ${code}`),
+  }
+  showMenu(ui.menu, { joinCode: code, rules: config.rules, handlers })
+}
+
+// For async work nobody awaits: a failure still reaches the console and the player.
+function run(work: Promise<void>, what: string) {
+  work.catch((err: unknown) => {
+    console.error(`${what} failed`, err)
+    showStatus(`${what} failed: ${errorMessage(err)}`)
+  })
 }
 
 function showStatus(text: string) {
@@ -329,6 +341,6 @@ const joinCode = location.hash.slice(1).toUpperCase()
 const linkedMap = new URLSearchParams(location.search).get('map')
 refreshControls()
 if (joinCode) openMenu(joinCode)
-else if (linkedMap && maps[linkedMap]) start(maps[linkedMap].mode, loadName())
+else if (linkedMap && maps[linkedMap]) run(start(maps[linkedMap].mode, loadName()), 'Starting the game')
 else openMenu('')
 if (linkedMap && !maps[linkedMap]) showStatus(`No map "${linkedMap}". Maps: ${Object.keys(maps).join(', ')}`)

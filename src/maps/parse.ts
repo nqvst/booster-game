@@ -11,7 +11,7 @@
 import { SLOT_SPACING } from '../sim/rocket.ts'
 
 export const TEAMS = ['blue', 'red'] as const
-export const MODES = ['pve', 'pvp'] as const
+const MODES = ['pve', 'pvp'] as const
 export const BIOME_NAMES = ['desert', 'jungle', 'nautic'] as const
 export const SOLID_KINDS = ['water', 'concrete', 'metal', 'hazard', 'panel', 'glass', 'planks', 'hull', 'stone'] as const // art in src/art/solids.ts
 export const PROP_KINDS = ['lamp', 'starburst', 'beacon', 'tank', 'radar', 'saucer', 'palm', 'statue'] as const // art in src/art/props/

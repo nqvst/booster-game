@@ -14,7 +14,7 @@ import type { Biome, GameMap, Rect, Team } from '../maps/parse.ts'
 const SKY_LAYER = 0.1 // stars, suns
 const CLOUD_LAYER = 0.15 // clouds, passing ships
 
-export type Weather = { time: Time; rain: boolean }
+type Weather = { time: Time; rain: boolean }
 export type Scenery = ReturnType<typeof createScenery>
 type Scene = ReturnType<typeof layoutScene>
 type Lightning = { next: number; at: number } // when the next bolt strikes, when the last one did

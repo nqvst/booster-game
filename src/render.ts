@@ -11,7 +11,7 @@ import { drawProp } from './art/props/index.ts'
 import { drawCannon, drawLaser, drawRocket } from './art/sprites.ts'
 import { createEffects } from './art/effects.ts'
 
-const MUZZLE_FLASH = 0.08 // seconds after a shot
+const MUZZLE_FLASH_SECONDS = 0.08 // after a shot
 
 type Point = { x: number; y: number }
 
@@ -112,7 +112,7 @@ function drawWorld({ ctx, game, me, config, scenery, dt, w, h, scale, cam }: Fra
   for (const [team, base] of teamEntries(map.bases)) drawPad(ctx, base.pad, team, clock)
   for (const p of map.props) drawProp(ctx, p, clock)
   drawFlags(ctx, game, clock)
-  for (const c of game.cannons) drawCannon(ctx, c, c.cooldown > config.cannon.fireInterval - MUZZLE_FLASH, clock)
+  for (const c of game.cannons) drawCannon(ctx, c, c.cooldown > config.cannon.fireInterval - MUZZLE_FLASH_SECONDS, clock)
   for (const b of game.bullets) drawLaser(ctx, b)
   for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset, r === me)
   effects.draw(ctx, dt)

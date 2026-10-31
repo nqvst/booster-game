@@ -46,7 +46,7 @@ blend(shown, at(1, 100, 3.1), at(1.1, 200, -3.1), 1.05)
 close(shown.rockets[0].x, 150, 'blended x')
 assert(Math.abs(Math.abs(shown.rockets[0].angle) - Math.PI) < 0.01, `angle should blend through π, got ${shown.rockets[0].angle}`)
 
-// Remote game: draws DELAY behind, events fire once that moment reaches them.
+// Remote game: draws DELAY_SECONDS behind, events fire once that moment reaches them.
 const remote = createRemoteGame()
 remote.roster(map, { type: 'roster', mapName: 'duel', mode: 'pvp', players })
 remote.snapshot(encodeSnapshot({ ...game, time: 10 }, events), 50)

@@ -6,8 +6,8 @@ import type { Rect, Solid } from '../maps/parse.ts'
 
 // The sea: a wavy mirror of what's drawn above it, tinted, with ripples and sun glints.
 
-export type Sea = ReturnType<typeof layoutSea>
-export type SeaLook = {
+type Sea = ReturnType<typeof layoutSea>
+type SeaLook = {
   sky: Sky
   rain: boolean
   sunX: number

@@ -4,7 +4,7 @@ import type { Point } from './brush.ts'
 import type { GameEvent } from '../sim/game.ts'
 
 export type Explosion = Omit<Extract<GameEvent, { type: 'explode' }>, 'type'>
-export type Effects = ReturnType<typeof createEffects>
+type Effects = ReturnType<typeof createEffects>
 
 type MinMax = [min: number, max: number]
 type Look = { gravity: number; size: number } & ({ kind: 'smoke' | 'flash' } | { kind: 'spark'; color: string })

@@ -120,7 +120,10 @@ function onKey(e: KeyboardEvent): void {
 function onShortcut(e: KeyboardEvent): void {
   if (e.code === 'KeyS') {
     e.preventDefault()
-    save()
+    save().catch((err: unknown) => {
+      console.error('Save failed', err)
+      showStatus(String(err), true)
+    })
   }
   if (e.code === 'KeyZ' && !inField(e)) {
     e.preventDefault()

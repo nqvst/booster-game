@@ -8,7 +8,7 @@
     "preview": "vite preview --host",
     "test": "node --test 'test/*.test.ts'",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-exports.ts",
     "editor": "vite --host --open /editor.html"
   },
   "devDependencies": {

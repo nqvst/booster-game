@@ -11,7 +11,7 @@ const ZOOM_LIMITS = [0.05, 4]
 const CURSORS: Partial<Record<string, string>> = { lr: 'ew-resize', tb: 'ns-resize', lt: 'nwse-resize', rb: 'nwse-resize', rt: 'nesw-resize', lb: 'nesw-resize' }
 
 type ResizeDrag = { kind: 'resize'; item: RectItem; start: Rect; edges: Partial<Edges>; created?: boolean }
-export type Drag =
+type Drag =
   | { kind: 'pan'; from: Point; start: Point }
   | { kind: 'move'; item: RectItem; from: Point; start: Point }
   | { kind: 'stand'; item: StandingItem }
@@ -129,7 +129,7 @@ function wheel(canvas: HTMLCanvasElement, view: View, e: WheelEvent): void {
 }
 
 // view.x, view.y: world point at the canvas center. zoom: CSS pixels per world unit.
-export function toWorld(canvas: HTMLCanvasElement, view: View, e: MouseEvent): Point {
+function toWorld(canvas: HTMLCanvasElement, view: View, e: MouseEvent): Point {
   const box = canvas.getBoundingClientRect()
   return { x: view.x + (e.clientX - box.left - box.width / 2) / view.zoom, y: view.y + (e.clientY - box.top - box.height / 2) / view.zoom }
 }

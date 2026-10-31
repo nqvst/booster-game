@@ -24,7 +24,7 @@ export const BIOMES = {
   nautic: { label: 'Nautic', blocks: ['rock', 'water', 'hull', 'planks', 'metal', 'hazard', 'glass'], hills: 'island', tint: '#9ac0dc', rain: 0.45 },
 } as const satisfies Record<Biome, { label: string; blocks: readonly (SolidKind | 'rock')[]; hills: string; tint: string | null; rain: number }>
 
-export type BlockKind = (typeof BIOMES)[Biome]['blocks'][number]
+type BlockKind = (typeof BIOMES)[Biome]['blocks'][number]
 export type HillShape = (typeof BIOMES)[Biome]['hills']
 
 export const COLOR = {
