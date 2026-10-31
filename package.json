@@ -6,14 +6,18 @@
     "dev": "vite --host",
     "build": "vite build --base=./",
     "preview": "vite preview --host",
-    "test": "node --test 'test/*.test.js'",
+    "test": "node --test 'test/*.test.ts'",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "editor": "vite --host --open /editor.html"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
+    "typescript": "~6.0",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5"
   },
   "dependencies": {

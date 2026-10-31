@@ -1,0 +1,21 @@
+{
+  // Type-check only (`npm run typecheck`). Vite and Node strip the types themselves, so nothing is emitted
+  // and only syntax that erases cleanly is allowed (no enum, no namespace).
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["node", "vite/client"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "test", "worker", "vite.config.ts"]
+}

@@ -1,16 +1,24 @@
 import js from '@eslint/js';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 // Game logic that also runs in Node (tests, the dev server): no DOM.
-const NO_DOM = ['src/sim/**', 'src/maps/parse.js', 'src/editor/model.js', 'src/snapshot.js', 'src/remote-game.js'];
+const NO_DOM = ['src/sim/**', 'src/maps/parse.ts', 'src/editor/model.ts', 'src/snapshot.ts', 'src/remote-game.ts'];
 
 export default [
   { ignores: ['dist/', '.claude/'] },
   js.configs.recommended,
-  { files: ['src/**/*.js'], ignores: NO_DOM, languageOptions: { globals: globals.browser } },
+  ...tseslint.configs.recommended,
+  {
+    // typescript-eslint turns no-undef off, but here it's what keeps the DOM out of NO_DOM files.
+    files: ['**/*.ts'],
+    languageOptions: { parserOptions: { lib: ['esnext'] } },
+    rules: { 'no-undef': 'error' },
+  },
+  { files: ['src/**/*.ts'], ignores: NO_DOM, languageOptions: { globals: globals.browser } },
   { files: NO_DOM, languageOptions: { globals: globals['shared-node-browser'] } },
-  { files: ['worker/**/*.js'], languageOptions: { globals: globals.worker } },
-  { files: ['test/**/*.js', '*.config.js'], languageOptions: { globals: globals.node } },
+  { files: ['worker/**/*.ts'], languageOptions: { globals: globals.worker } },
+  { files: ['test/**/*.ts', '*.config.*'], languageOptions: { globals: globals.node } },
   {
     // The sim is pure: same inputs → same state. No clock, no randomness, nothing from outside src/sim/.
     files: ['src/sim/**'],
@@ -36,7 +44,7 @@ export default [
 
       // Errors fail loud.
       'no-empty': ['error', { allowEmptyCatch: false }],
-      'no-unused-vars': ['error', { caughtErrors: 'all' }],
+      '@typescript-eslint/no-unused-vars': ['error', { caughtErrors: 'all' }],
 
       // Boring over clever.
       'eqeqeq': ['error', 'always'],
@@ -44,7 +52,7 @@ export default [
       'prefer-const': 'error',
       'no-nested-ternary': 'error',
       'no-param-reassign': 'error',
-      'no-shadow': 'error',
+      '@typescript-eslint/no-shadow': 'error',
       'no-else-return': 'error',
       'consistent-return': 'error',
     },

@@ -1,7 +1,7 @@
-# TURN credentials Worker (turn.js). Not deployed by CI: run `npx wrangler deploy`
+# TURN credentials Worker (turn.ts). Not deployed by CI: run `npx wrangler deploy`
 # from this folder after any change. How it works and how to change it: TURN.md.
 name = "booster-turn"
-main = "turn.js"
+main = "turn.ts"
 compatibility_date = "2026-10-01"
 workers_dev = true # serves https://booster-turn.nqvst.workers.dev
 preview_urls = false

@@ -26,8 +26,8 @@ npm run lint
 | Path | What |
 | --- | --- |
 | `src/sim/` | Game rules. Pure, no DOM: same inputs → same state |
-| `src/art/`, `src/render.js` | Drawing |
-| `src/net.js`, `src/snapshot.js`, `src/remote-game.js` | Multiplayer: connections, the binary snapshot format, joiner-side smoothing |
+| `src/art/`, `src/render.ts` | Drawing |
+| `src/net.ts`, `src/snapshot.ts`, `src/remote-game.ts` | Multiplayer: connections, the binary snapshot format, joiner-side smoothing |
 | `src/maps/*.json` | Maps, one file each. Picked up automatically |
 | `src/editor/` | Map editor |
 | `worker/` | Cloudflare Worker for TURN relay credentials |
@@ -37,9 +37,9 @@ npm run lint
 `npm run editor`, draw, ⌘S. Saves `src/maps/<name>.json` and reloads open game tabs.
 A map has a biome (desert, jungle, nautic): it sets how rock looks, the hills behind the map, the rain
 odds and which blocks the editor offers. Blocks are solid; props (lamps, signs, saucers…) are decoration
-that rockets fly through, and all props work in every biome. New material, prop or biome: `src/art/solids.js`,
-`src/art/props/` or `src/art/theme.js` BIOMES (+ ground art in `src/art/ground.js`), then its name in
-`src/maps/parse.js`; the editor and `/art.html` pick it up.
+that rockets fly through, and all props work in every biome. New material, prop or biome: `src/art/solids.ts`,
+`src/art/props/` or `src/art/theme.ts` BIOMES (+ ground art in `src/art/ground.ts`), then its name in
+`src/maps/parse.ts`; the editor and `/art.html` pick it up.
 A map has a mode. PvE maps: orange pad for the players, red pad and cannons for the computer. PvP maps must be
 symmetric (`npm test` checks): build the left half, press Mirror. Cannons belong to the side they stand on.
 Commit the JSON to ship it. Saving only works on the dev server; the editor isn't deployed.

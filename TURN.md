@@ -2,7 +2,7 @@
 
 ## How multiplayer works
 
-Peer-to-peer over WebRTC with [PeerJS](https://peerjs.com). No game server. Code: `src/net.js`.
+Peer-to-peer over WebRTC with [PeerJS](https://peerjs.com). No game server. Code: `src/net.ts`.
 
 ```
            ┌──────────── handshake only ────────────┐
@@ -17,7 +17,7 @@ Peer-to-peer over WebRTC with [PeerJS](https://peerjs.com). No game server. Code
 ```
 
 1. **Credentials.** Before hosting or joining, the game GETs short-lived TURN credentials from our
-   Worker (`worker/turn.js`). The TURN secret lives only in the Worker.
+   Worker (`worker/turn.ts`). The TURN secret lives only in the Worker.
 2. **Host.** Invite (PvE) or picking PvP registers `booster-game-<CODE>` on the PeerJS server.
    The link is `…/#<CODE>`.
 3. **Join.** The joiner enters a name and looks up that ID, sending `{ name, protocol }` as connection metadata;
@@ -29,8 +29,8 @@ Peer-to-peer over WebRTC with [PeerJS](https://peerjs.com). No game server. Code
 6. **Play.** The host runs the only sim. Raw data channel, kept small since relayed bytes cost money:
    - Joiners send 1 byte of input when it changes, and once a second as a heartbeat.
    - The host sends `{ type: 'roster', mapName, mode, players }` when a match starts or players change,
-     and a binary snapshot (`src/snapshot.js`, ~70 bytes for a 1v1) 20 times a second.
-   - Joiners draw 0.1 s behind the newest snapshot and blend between snapshots (`src/remote-game.js`).
+     and a binary snapshot (`src/snapshot.ts`, ~70 bytes for a 1v1) 20 times a second.
+   - Joiners draw 0.1 s behind the newest snapshot and blend between snapshots (`src/remote-game.ts`).
    - Room full → `{ type: 'full' }`.
 
    A 1v1 is roughly 0.2 MB/min through the relay, packet overhead included (was ~2 MB/min with JSON at 30 Hz).
@@ -39,10 +39,10 @@ Peer-to-peer over WebRTC with [PeerJS](https://peerjs.com). No game server. Code
 
 | What | Limit | Where |
 | --- | --- | --- |
-| Fetching relay credentials | 5 s | `CREDENTIALS_TIMEOUT_MS` in `src/net.js` |
-| Joining (handshake + connect) | 15 s | `JOIN_TIMEOUT_MS` in `src/net.js` |
-| Silence before a player or the host counts as gone | 5 s | `TIMEOUT_MS` in `src/net.js` |
-| Relay credentials valid for | 24 h | `TTL_SECONDS` in `worker/turn.js` |
+| Fetching relay credentials | 5 s | `CREDENTIALS_TIMEOUT_MS` in `src/net.ts` |
+| Joining (handshake + connect) | 15 s | `JOIN_TIMEOUT_MS` in `src/net.ts` |
+| Silence before a player or the host counts as gone | 5 s | `TIMEOUT_MS` in `src/net.ts` |
+| Relay credentials valid for | 24 h | `TTL_SECONDS` in `worker/turn.ts` |
 
 ### What the errors mean
 
@@ -66,7 +66,7 @@ Peer-to-peer over WebRTC with [PeerJS](https://peerjs.com). No game server. Code
 
 ## The TURN Worker
 
-`worker/turn.js`, config in `worker/wrangler.toml`, live at https://booster-turn.nqvst.workers.dev.
+`worker/turn.ts`, config in `worker/wrangler.toml`, live at https://booster-turn.nqvst.workers.dev.
 
 - `GET /` from an allowed origin → `{ iceServers: [...] }` from Cloudflare's
   `generate-ice-servers` API. Other origins → 403.
@@ -95,12 +95,12 @@ paste the token when asked (never as an argument, it would land in shell history
 immediately. Then delete the old token in the dashboard. New TURN key instead? Also update
 `TURN_KEY_ID` in `wrangler.toml` and `npx wrangler deploy`.
 
-**Change credential lifetime:** `TTL_SECONDS` in `turn.js`, then `npx wrangler deploy`.
+**Change credential lifetime:** `TTL_SECONDS` in `turn.ts`, then `npx wrangler deploy`.
 
 **Move or rename the Worker:** change `name` in `wrangler.toml`, deploy, then update
-`TURN_CREDENTIALS_URL` in `src/net.js` and release the game.
+`TURN_CREDENTIALS_URL` in `src/net.ts` and release the game.
 
-**Turn the relay off:** set `TURN_CREDENTIALS_URL = ''` in `src/net.js`. The game falls back to
+**Turn the relay off:** set `TURN_CREDENTIALS_URL = ''` in `src/net.ts`. The game falls back to
 PeerJS's free public relay and logs a warning.
 
 ### Debugging
