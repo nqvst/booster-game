@@ -1,14 +1,21 @@
+import type { Config } from '../config.ts'
+import type { CannonSpot, Rect, Team } from '../maps/parse.ts'
+import type { Game } from './game.ts'
+import type { Rocket } from './rocket.ts'
 import { solidAt, wrapAngle } from './geometry.ts'
+
+export type Cannon = CannonSpot & { aim: number; cooldown: number }
+export type Bullet = { x: number; y: number; vx: number; vy: number; team: Team; life: number }
 
 export const BARREL_LENGTH = 20
 export const PIVOT_HEIGHT = 14
 
 // Cannon x,y is the surface point it stands on.
-export function cannonPedestal(c) {
+export function cannonPedestal(c: Pick<CannonSpot, 'x' | 'y'>): Rect {
   return { x: c.x - 14, y: c.y - 12, w: 28, h: 12 }
 }
 
-export function stepCannons(game, config, dt) {
+export function stepCannons(game: Game, config: Config, dt: number): void {
   const { enabled, range, bulletSpeed, fireInterval, turnSpeed, aimTolerance, leadTarget } = config.cannon
   if (!enabled) return
   for (const cannon of game.cannons) {
@@ -45,7 +52,7 @@ export function stepCannons(game, config, dt) {
   }
 }
 
-function nearestEnemy(rockets, team, from, range) {
+function nearestEnemy(rockets: Rocket[], team: Team, from: { x: number; y: number }, range: number): Rocket | null {
   let best = null
   let bestDist = range
   for (const r of rockets) {
@@ -60,8 +67,8 @@ function nearestEnemy(rockets, team, from, range) {
 }
 
 // Moves bullets, drops spent ones. Returns rockets hit this tick.
-export function stepBullets(game, config, dt) {
-  const hits = []
+export function stepBullets(game: Game, config: Config, dt: number): Rocket[] {
+  const hits: Rocket[] = []
   const { hitRadius } = config.rocket
   game.bullets = game.bullets.filter((b) => {
     b.x += b.vx * dt

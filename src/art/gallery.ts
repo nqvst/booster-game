@@ -7,6 +7,11 @@ import { drawProp } from './props/index.ts'
 import { drawCannon, drawLaser, drawRocket } from './sprites.ts'
 import { createEffects } from './effects.ts'
 import { fitCanvas } from './brush.ts'
+import { context2d, find } from '../dom.ts'
+import { teamEntries } from '../sim/game.ts'
+import type { Explosion } from './effects.ts'
+import type { Time } from './theme.ts'
+import type { Biome, Team } from '../maps/parse.ts'
 
 // Art preview: every sprite on one screen, animated, over the real scenery.
 // `npm run dev`, open /art.html; edits in src/art/ reload instantly.
@@ -15,12 +20,17 @@ import { fitCanvas } from './brush.ts'
 const CELL = 100 // world units
 const ZOOM = 3
 
-const rocket = (x, y, team, { left = false, right = false, angle = 0 } = {}) => ({ x, y, team, angle, input: { left, right } })
+type Cell = [
+  label: string,
+  draw: (ctx: CanvasRenderingContext2D, frame: { x: number; y: number; t: number; boom: (e: Explosion) => void }) => void,
+]
+
+const rocket = (x: number, y: number, team: Team, { left = false, right = false, angle = 0 } = {}) => ({ x, y, team, angle, input: { left, right } })
 const BOTH = { left: true, right: true }
 let canyon = maps[DEFAULT_MAP]
 
 // Each cell draws around its center x, y. t: clock, boom: throttled explosion.
-const cells = [
+const cells: Cell[] = [
   ['rocket idle', (ctx, { x, y }) => drawRocket(ctx, rocket(x, y, 'blue'), config.rocket.engineOffset)],
   ['both engines', (ctx, { x, y }) => drawRocket(ctx, rocket(x, y - 10, 'blue', BOTH), config.rocket.engineOffset)],
   ['turning', (ctx, { x, y, t }) => drawRocket(ctx, rocket(x, y - 10, 'blue', { left: true, angle: Math.sin(t) * 0.5 }), config.rocket.engineOffset)],
@@ -39,11 +49,11 @@ const cells = [
     drawRock(ctx, { x: x - 45, y: y + 20, w: 90, h: 25 }, scenery.sky, canyon.biome)
     drawPad(ctx, { x: x - 35, y: y, w: 70, h: 20 }, 'blue', t)
   }],
-  ...['concrete', 'metal', 'hazard', 'panel', 'glass', 'planks', 'hull', 'stone'].map((kind) => [kind, (ctx, { x, y }) => {
+  ...(['concrete', 'metal', 'hazard', 'panel', 'glass', 'planks', 'hull', 'stone'] as const).map((kind): Cell => [kind, (ctx, { x, y }) => {
     drawSolid(ctx, { x: x - 45, y: y - 10, w: 90, h: 50, kind }, scenery.sky, canyon.biome)
     drawSolid(ctx, { x: x - 20, y: y - 40, w: 40, h: 30, kind }, scenery.sky, canyon.biome)
   }]),
-  ...['lamp', 'starburst', 'beacon', 'tank', 'radar', 'saucer', 'palm', 'statue'].map((kind) => [kind, (ctx, { x, y, t }) => {
+  ...(['lamp', 'starburst', 'beacon', 'tank', 'radar', 'saucer', 'palm', 'statue'] as const).map((kind): Cell => [kind, (ctx, { x, y, t }) => {
     drawRock(ctx, { x: x - 45, y: y + 35, w: 90, h: 12 }, scenery.sky, canyon.biome)
     drawProp(ctx, { kind, x, y: y + 35 }, t)
   }]),
@@ -55,13 +65,13 @@ const cells = [
   ['explosion', (ctx, { x, y, boom }) => boom({ x, y, team: 'blue' })],
 ]
 
-const canvas = document.querySelector('canvas')
-const ctx = canvas.getContext('2d')
+const canvas = find<HTMLCanvasElement>(document, 'canvas')
+const ctx = context2d(canvas)
 let scenery = createScenery(canyon, randomWeather(canyon.biome))
 addEventListener('keydown', (e) => {
   const { time, rain } = scenery.weather
-  const times = Object.keys(SKIES)
-  const biomes = Object.keys(BIOMES)
+  const times = Object.keys(SKIES) as Time[]
+  const biomes = Object.keys(BIOMES) as Biome[]
   if (e.code === 'KeyT') scenery = createScenery(canyon, { time: times[(times.indexOf(time) + 1) % times.length], rain })
   if (e.code === 'KeyR') scenery = createScenery(canyon, { time, rain: !rain })
   if (e.code === 'KeyB') {
@@ -89,20 +99,20 @@ requestAnimationFrame(function frame(now) {
 })
 
 // Whole map scaled to fill the screen
-function drawMap(w, h) {
+function drawMap(w: number, h: number) {
   const fit = Math.max(w / canyon.width, h / canyon.height)
   ctx.setTransform(fit, 0, 0, fit, 0, 0)
   scenery.backdrop(ctx, canyon.width / 2, canyon.height / 2, clock)
   for (const s of canyon.solids) drawSolid(ctx, s, scenery.sky, canyon.biome)
-  for (const [team, base] of Object.entries(canyon.bases)) drawPad(ctx, base.pad, team, clock)
+  for (const [team, base] of teamEntries(canyon.bases)) drawPad(ctx, base.pad, team, clock)
   for (const p of canyon.props) drawProp(ctx, p, clock)
   scenery.water(ctx, canyon.width / 2, clock)
 }
 
-function drawCells(w, dpr) {
+function drawCells(w: number, dpr: number) {
   const zoom = ZOOM * dpr
   const cols = Math.max(1, Math.floor(w / (CELL * zoom)))
-  const boom = (e) => {
+  const boom = (e: Explosion) => {
     if (clock < nextBoom) return
     effects.explode(e)
     nextBoom = clock + 1.5
@@ -121,7 +131,7 @@ function drawCells(w, dpr) {
   })
 }
 
-function drawKeysHint(h, dpr) {
+function drawKeysHint(h: number, dpr: number) {
   const { time, rain } = scenery.weather
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.fillStyle = COLOR.text

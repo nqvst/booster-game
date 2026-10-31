@@ -15,7 +15,7 @@ export default [
     languageOptions: { parserOptions: { lib: ['esnext'] } },
     rules: { 'no-undef': 'error' },
   },
-  { files: ['src/**/*.ts'], ignores: NO_DOM, languageOptions: { globals: globals.browser } },
+  { files: ['src/**/*.ts'], ignores: NO_DOM, languageOptions: { globals: globals.browser, parserOptions: { lib: ['esnext', 'dom', 'dom.iterable'] } } },
   { files: NO_DOM, languageOptions: { globals: globals['shared-node-browser'] } },
   { files: ['worker/**/*.ts'], languageOptions: { globals: globals.worker } },
   { files: ['test/**/*.ts', '*.config.*'], languageOptions: { globals: globals.node } },
@@ -23,7 +23,8 @@ export default [
     // The sim is pure: same inputs → same state. No clock, no randomness, nothing from outside src/sim/.
     files: ['src/sim/**'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [{ regex: '^\\.\\./', message: 'src/sim/ imports only from src/sim/.' }] }],
+      // Types are erased, so the sim may name types from elsewhere (GameMap, Config) without depending on that code.
+      '@typescript-eslint/no-restricted-imports': ['error', { patterns: [{ regex: '^\\.\\./', allowTypeImports: true, message: 'src/sim/ imports only from src/sim/.' }] }],
       'no-restricted-properties': [
         'error',
         { object: 'Math', property: 'random', message: 'The sim is deterministic: no randomness.' },

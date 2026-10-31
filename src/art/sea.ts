@@ -1,10 +1,21 @@
 import { COLOR, RAIN } from './theme.ts'
 import { TAU, additive, rand } from './brush.ts'
+import { context2d } from '../dom.ts'
+import type { Sky } from './theme.ts'
+import type { Rect, Solid } from '../maps/parse.ts'
 
 // The sea: a wavy mirror of what's drawn above it, tinted, with ripples and sun glints.
 
+export type Sea = ReturnType<typeof layoutSea>
+export type SeaLook = {
+  sky: Sky
+  rain: boolean
+  sunX: number
+  mirror: HTMLCanvasElement // scratch canvas reused every frame
+}
+
 // rect: a solid of kind `water`. solids: the map's, for foam where rock meets the sea.
-export function layoutSea(rect, solids, rain) {
+export function layoutSea(rect: Solid, solids: Solid[], rain: boolean) {
   return {
     rect,
     ripples: Array.from({ length: Math.round(rect.w / 10) }, () => ({
@@ -26,8 +37,7 @@ export function layoutSea(rect, solids, rain) {
   }
 }
 
-// look: { sky, rain, sunX, mirror } — mirror is a scratch canvas reused every frame.
-export function drawSea(ctx, sea, look, clock) {
+export function drawSea(ctx: CanvasRenderingContext2D, sea: Sea, look: SeaLook, clock: number) {
   drawReflection(ctx, sea.rect, look, clock)
   const { rect } = sea
   const tint = ctx.createLinearGradient(0, rect.y, 0, rect.y + rect.h)
@@ -44,7 +54,7 @@ export function drawSea(ctx, sea, look, clock) {
 }
 
 // Mirrors what's already drawn above the surface, in wavy pixel rows.
-function drawReflection(ctx, rect, { rain, mirror }, clock) {
+function drawReflection(ctx: CanvasRenderingContext2D, rect: Rect, { rain, mirror }: Pick<SeaLook, 'rain' | 'mirror'>, clock: number) {
   const m = ctx.getTransform()
   const top = Math.round(rect.y * m.d + m.f)
   const bottom = Math.min(ctx.canvas.height, Math.round((rect.y + rect.h) * m.d + m.f))
@@ -56,7 +66,7 @@ function drawReflection(ctx, rect, { rain, mirror }, clock) {
     mirror.width = w
     mirror.height = h
   }
-  mirror.getContext('2d').drawImage(ctx.canvas, 0, top - h, w, h, 0, 0, w, h)
+  context2d(mirror).drawImage(ctx.canvas, 0, top - h, w, h, 0, 0, w, h)
   ctx.save()
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   const band = 2
@@ -69,7 +79,7 @@ function drawReflection(ctx, rect, { rain, mirror }, clock) {
   ctx.restore()
 }
 
-function drawGlints(ctx, { rect, glints }, { sky, rain, sunX }, clock) {
+function drawGlints(ctx: CanvasRenderingContext2D, { rect, glints }: Sea, { sky, rain, sunX }: SeaLook, clock: number) {
   additive(ctx, () => {
     ctx.fillStyle = sky.glint
     for (const g of glints) {
@@ -80,7 +90,7 @@ function drawGlints(ctx, { rect, glints }, { sky, rain, sunX }, clock) {
   })
 }
 
-function drawSplashes(ctx, { rect, splashes }, clock) {
+function drawSplashes(ctx: CanvasRenderingContext2D, { rect, splashes }: Sea, clock: number) {
   ctx.strokeStyle = RAIN.splash
   ctx.lineWidth = 0.8
   for (const s of splashes) {
@@ -93,7 +103,7 @@ function drawSplashes(ctx, { rect, splashes }, clock) {
   ctx.globalAlpha = 1
 }
 
-function drawShoreline(ctx, { rect, shores }, sky, clock) {
+function drawShoreline(ctx: CanvasRenderingContext2D, { rect, shores }: Sea, sky: Sky, clock: number) {
   ctx.fillStyle = sky.waterLine
   ctx.fillRect(rect.x, rect.y, rect.w, 1)
   ctx.fillStyle = COLOR.foam

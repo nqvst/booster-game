@@ -1,11 +1,14 @@
 import { COLOR } from './theme.ts'
+import type { Palette } from './theme.ts'
 
 // Small painting helpers shared by the art files.
 
 export const TAU = Math.PI * 2
 
+export type Point = { x: number; y: number }
+
 // Matches the backing store to the CSS size at device resolution.
-export function fitCanvas(canvas) {
+export function fitCanvas(canvas: HTMLCanvasElement) {
   const dpr = devicePixelRatio || 1
   const w = Math.round(canvas.clientWidth * dpr)
   const h = Math.round(canvas.clientHeight * dpr)
@@ -16,8 +19,8 @@ export function fitCanvas(canvas) {
   return { dpr, w, h }
 }
 
-// Lit-from-the-left cylinder shading across x0..x1. stops = [light, mid, shadow].
-export function shaded(ctx, x0, x1, [light, mid, shadow]) {
+// Lit-from-the-left cylinder shading across x0..x1.
+export function shaded(ctx: CanvasRenderingContext2D, x0: number, x1: number, [light, mid, shadow]: Palette) {
   const g = ctx.createLinearGradient(x0, 0, x1, 0)
   g.addColorStop(0, mid)
   g.addColorStop(0.3, light)
@@ -26,14 +29,14 @@ export function shaded(ctx, x0, x1, [light, mid, shadow]) {
 }
 
 // Polished chrome across x0..x1: hard light/dark bands.
-export function chrome(ctx, x0, x1) {
+export function chrome(ctx: CanvasRenderingContext2D, x0: number, x1: number) {
   const g = ctx.createLinearGradient(x0, 0, x1, 0)
   for (const [at, color] of COLOR.chrome) g.addColorStop(at, color)
   return g
 }
 
 // Draws inside with additive blending, so overlapping light glows.
-export function additive(ctx, draw) {
+export function additive(ctx: CanvasRenderingContext2D, draw: () => void) {
   ctx.save()
   ctx.globalCompositeOperation = 'lighter'
   draw()
@@ -41,12 +44,12 @@ export function additive(ctx, draw) {
 }
 
 // Art is render-only, so Math.random is fine.
-export function rand(lo, hi) {
+export function rand(lo: number, hi: number) {
   return lo + Math.random() * (hi - lo)
 }
 
 // Soft round light. Use inside additive().
-export function glowDot(ctx, x, y, { radius, color, alpha = 1 }) {
+export function glowDot(ctx: CanvasRenderingContext2D, x: number, y: number, { radius, color, alpha = 1 }: { radius: number; color: string; alpha?: number }) {
   const g = ctx.createRadialGradient(x, y, 0, x, y, radius)
   g.addColorStop(0, color)
   g.addColorStop(1, 'rgba(0,0,0,0)')
@@ -59,7 +62,7 @@ export function glowDot(ctx, x, y, { radius, color, alpha = 1 }) {
 }
 
 // Flattened dark ellipse under something standing at x, y: grounds it on the surface.
-export function groundShadow(ctx, x, y, halfWidth) {
+export function groundShadow(ctx: CanvasRenderingContext2D, x: number, y: number, halfWidth: number) {
   ctx.fillStyle = COLOR.shadow
   ctx.beginPath()
   ctx.ellipse(x, y, halfWidth, halfWidth * 0.22, 0, 0, TAU)

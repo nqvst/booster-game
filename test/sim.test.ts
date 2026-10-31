@@ -1,26 +1,35 @@
 import assert from 'node:assert/strict'
+import type { Config } from '../src/config.ts'
+import type { GameMap, Mode, Solid } from '../src/maps/parse.ts'
+import type { Input } from '../src/sim/rocket.ts'
 import { config as baseConfig } from '../src/config.ts'
 import { addPlayer, createGame, flagHome, maxPlayersPerTeam, removePlayer, step } from '../src/sim/game.ts'
 
-const flat = {
+const flat: GameMap = {
+  mode: 'pve',
+  biome: 'desert',
   width: 2000,
   height: 1000,
   solids: [{ x: 0, y: 900, w: 2000, h: 100 }],
   bases: { blue: { pad: { x: 100, y: 860, w: 240, h: 40 } }, red: { pad: { x: 1600, y: 860, w: 240, h: 40 } } },
   cannons: [],
+  props: [],
 }
 const BOTH = { left: true, right: true }
+const NONE = { left: false, right: false }
+const LEFT = { left: true, right: false }
+type Setup = ReturnType<typeof setup>
 
-function setup(map = flat, tweak = () => {}, mode = 'pve') {
+function setup(map = flat, tweak: (config: Config) => void = () => {}, mode: Mode = 'pve') {
   const config = structuredClone(baseConfig)
   tweak(config)
   const game = createGame(map, [{ id: 'p1', team: 'blue' }], mode)
   return { config, game, r: game.rockets[0] }
 }
-function run({ game, config }, seconds, input = {}) {
+function run({ game, config }: Setup, seconds: number, input: Input = NONE) {
   for (let i = 0; i < seconds * config.tickRate; i++) step(game, { p1: input }, config)
 }
-function runUntil({ game, config }, done, seconds) {
+function runUntil({ game, config }: Setup, done: () => boolean, seconds: number) {
   for (let i = 0; i < seconds * config.tickRate; i++) {
     step(game, {}, config)
     if (done()) return true
@@ -38,10 +47,10 @@ function runUntil({ game, config }, done, seconds) {
 
 // Left engine tilts nose right; engines further out spin faster.
 {
-  const tilt = (offset) => {
+  const tilt = (offset: number) => {
     const t = setup(flat, (c) => (c.rocket.engineOffset = offset))
     run(t, 0.3, BOTH)
-    run(t, 0.2, { left: true })
+    run(t, 0.2, LEFT)
     assert(t.r.alive, `rocket crashed during tilt test (offset ${offset})`)
     return t.r.angle
   }
@@ -81,7 +90,8 @@ function runUntil({ game, config }, done, seconds) {
 
 // Even a gentle touchdown on water crashes.
 {
-  const sea = { ...flat, solids: [{ ...flat.solids[0], kind: 'water' }] }
+  const seaFloor: Solid = { ...flat.solids[0], kind: 'water' }
+  const sea = { ...flat, solids: [seaFloor] }
   const t = setup(sea)
   Object.assign(t.r, { x: 1000, y: 900 - 18 - 10, landed: false })
   assert(runUntil(t, () => !t.r.alive, 1), 'landing on water should crash')

@@ -1,8 +1,9 @@
 import { COLOR } from '../theme.ts'
 import { TAU, chrome, groundShadow } from '../brush.ts'
+import type { Point } from '../brush.ts'
 
 // Alien palm in a chrome planter: five teal fronds with orange tips, swaying.
-export function drawPalm(ctx, { x, y }, clock) {
+export function drawPalm(ctx: CanvasRenderingContext2D, { x, y }: Point, clock: number) {
   const crown = { x: x + 4, y: y - 40 }
   groundShadow(ctx, x, y, 9)
   ctx.fillStyle = COLOR.metalDark

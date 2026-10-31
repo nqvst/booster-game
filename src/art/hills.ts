@@ -1,5 +1,8 @@
 import { BIOMES, COLOR } from './theme.ts'
 import { TAU, additive, glowDot, rand } from './brush.ts'
+import type { Point } from './brush.ts'
+import type { HillShape, Sky } from './theme.ts'
+import type { Biome, GameMap } from '../maps/parse.ts'
 
 // Distant hills behind the map in four parallax layers, shaped by the biome:
 // butte = flat-topped mesas, canopy = rounded jungle hills, island = low islands with lighthouses.
@@ -13,9 +16,15 @@ const LAYERS = [
   { k: 0.46, base: 0.88, rise: 200, size: 1, lit: 0.4 },
   { k: 0.62, base: 0.92, rise: 150, size: 1.2, lit: 0.6 },
 ]
-const SHAPES = { butte, canopy, island }
+type Layer = (typeof LAYERS)[number]
+type Beacon = Point & { phase: number; tower?: boolean }
+type Skyline = { path: Path2D; windows: Point[]; beacons: Beacon[] }
+type Hill = { x: number; w: number; top: number; base: number; size: number }
+export type HillLayer = ReturnType<typeof layoutHills>[number]
 
-export function layoutHills(map, sky, biome) {
+const SHAPES: Record<HillShape, (width: number, layer: Layer) => Skyline> = { butte, canopy, island }
+
+export function layoutHills(map: Pick<GameMap, 'width' | 'height'>, sky: Sky, biome: Biome) {
   const { hills: shape, tint } = BIOMES[biome] ?? {}
   if (!SHAPES[shape]) throw new Error(`layoutHills: unknown biome "${biome}", expected one of ${Object.keys(BIOMES)}`)
   return LAYERS.map((l, i) => {
@@ -25,7 +34,7 @@ export function layoutHills(map, sky, biome) {
   })
 }
 
-export function drawHills(ctx, m, { sky, map }, clock) {
+export function drawHills(ctx: CanvasRenderingContext2D, m: HillLayer, { sky, map }: { sky: Sky; map: Pick<GameMap, 'width'> }, clock: number) {
   ctx.fillStyle = m.color
   ctx.fill(m.path)
   if (m.tint) {
@@ -58,7 +67,7 @@ export function drawHills(ctx, m, { sky, map }, clock) {
   })
 }
 
-function drawLighthouse(ctx, b, size) {
+function drawLighthouse(ctx: CanvasRenderingContext2D, b: Beacon, size: number) {
   const w = 5 * size
   const h = 26 * size
   ctx.fillStyle = COLOR.cream
@@ -68,7 +77,7 @@ function drawLighthouse(ctx, b, size) {
 }
 
 // Flat tops with sloped sides.
-function butte(width, layer) {
+function butte(width: number, layer: Layer) {
   return skyline(width, layer, (path, { x, w, top, base, size }) => {
     const slope = rand(15, 40) * size
     path.lineTo(x + slope, top)
@@ -78,7 +87,7 @@ function butte(width, layer) {
 }
 
 // Rounded domes, one tree crown bulging out of each.
-function canopy(width, layer) {
+function canopy(width: number, layer: Layer) {
   return skyline(width, { ...layer, lit: layer.lit * 0.5 }, (path, { x, w, top, base }) => {
     const peak = x + rand(0.35, 0.65) * w
     path.bezierCurveTo(x + w * 0.1, top + (base - top) * 0.3, peak - w * 0.2, top, peak, top)
@@ -87,7 +96,7 @@ function canopy(width, layer) {
 }
 
 // Long low mounds; the tallest carry a lighthouse.
-function island(width, layer) {
+function island(width: number, layer: Layer) {
   const low = { ...layer, rise: layer.rise * 0.35 }
   const hills = skyline(width, low, (path, { x, w, top, base }) => {
     path.lineTo(x + w * 0.3, top)
@@ -103,10 +112,10 @@ function island(width, layer) {
 
 // Hills along the width, filled far below the base so parallax never shows a gap.
 // profile(path, hill) draws the top edge from (x, base) to (x + w, base).
-function skyline(width, { base, rise, size, lit }, profile, stretch = 1) {
+function skyline(width: number, { base, rise, size, lit }: Pick<Layer, 'base' | 'rise' | 'size' | 'lit'>, profile: (path: Path2D, hill: Hill) => void, stretch = 1): Skyline {
   const path = new Path2D()
-  const windows = []
-  const beacons = []
+  const windows: Point[] = []
+  const beacons: Beacon[] = []
   let x = -1500
   path.moveTo(x, base + 2000)
   path.lineTo(x, base)
@@ -124,7 +133,7 @@ function skyline(width, { base, rise, size, lit }, profile, stretch = 1) {
   return { path, windows, beacons }
 }
 
-function windowsOn({ x, w, top, base, size }) {
+function windowsOn({ x, w, top, base, size }: Hill) {
   const at = rand(x + w * 0.3, x + w * 0.7)
   return Array.from({ length: Math.round(rand(3, 9)) }, () => ({ x: at + rand(-0.2, 0.2) * w, y: rand(top + 12 * size, base - 8) }))
 }

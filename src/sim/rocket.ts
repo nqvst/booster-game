@@ -1,18 +1,42 @@
+import type { Config } from '../config.ts'
+import type { GameMap, Rect, Team } from '../maps/parse.ts'
 import { solidAt, wrapAngle } from './geometry.ts'
+
+export type Input = { left: boolean; right: boolean }
+
+export type Rocket = {
+  id: string
+  team: Team
+  name: string
+  slot: number // place along the team's pad
+  x: number
+  y: number
+  vx: number
+  vy: number
+  angle: number
+  spin: number
+  alive: boolean
+  landed: boolean
+  input: Input
+  respawnAt: number // game.time of the next respawn; only means something while dead
+}
+
+type Point = readonly [x: number, y: number]
 
 // Local shape: origin = center of mass, -y = nose. Angle 0 = upright, positive = clockwise.
 // Hull points crash on any contact; only the feet may touch ground.
-const HULL = [[0, -24], [-8, -10], [8, -10], [-8, 0], [8, 0], [-8, 8], [8, 8]]
-export const FEET = [[-13, 18], [13, 18]]
+const HULL: readonly Point[] = [[0, -24], [-8, -10], [8, -10], [-8, 0], [8, 0], [-8, 8], [8, 8]]
+export const FEET: readonly Point[] = [[-13, 18], [13, 18]]
 export const FOOT_Y = 18
 const MAX_FOOT_SINK = 8 // a foot deeper than this (beyond this tick's fall) hit a wall side, not a top surface
 
-export const NO_INPUT = Object.freeze({ left: false, right: false })
+export const NO_INPUT: Readonly<Input> = Object.freeze({ left: false, right: false })
 export const SLOT_SPACING = 40 // spawn slots sit this far apart along a pad, the first one this far in
 
-export function spawnRocket(rocket, pad) {
-  Object.assign(rocket, {
-    x: pad.x + (rocket.slot + 1) * SLOT_SPACING,
+// Everything a respawn resets.
+export function spawnState(slot: number, pad: Rect) {
+  return {
+    x: pad.x + (slot + 1) * SLOT_SPACING,
     y: pad.y - FOOT_Y,
     vx: 0,
     vy: 0,
@@ -21,11 +45,11 @@ export function spawnRocket(rocket, pad) {
     alive: true,
     landed: true,
     input: NO_INPUT,
-  })
+  }
 }
 
 // Returns true if the rocket crashed this tick.
-export function stepRocket(r, map, config, dt) {
+export function stepRocket(r: Rocket, map: GameMap, config: Config, dt: number): boolean {
   const { thrust, engineOffset, inertia, spinDamping, drag } = config.rocket
   const left = r.input.left ? thrust : 0
   const right = r.input.right ? thrust : 0
@@ -47,13 +71,13 @@ export function stepRocket(r, map, config, dt) {
   return resolveContact(r, map, config.rocket.safeLandingAngle, dt)
 }
 
-function toWorld(r, [lx, ly]) {
+function toWorld(r: Rocket, [lx, ly]: Point): Point {
   const c = Math.cos(r.angle)
   const s = Math.sin(r.angle)
   return [r.x + lx * c - ly * s, r.y + lx * s + ly * c]
 }
 
-function resolveContact(r, map, safeLandingAngle, dt) {
+function resolveContact(r: Rocket, map: GameMap, safeLandingAngle: number, dt: number): boolean {
   r.landed = false
   if (HULL.some((p) => solidAt(map, ...toWorld(r, p)))) return true
 

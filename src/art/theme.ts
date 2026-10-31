@@ -2,12 +2,19 @@
 // cream plastic and chrome, orange trim, fins and portholes, glowing lasers.
 // Tweak here and check /art.html (npm run dev).
 
-const GUNMETAL = ['#c9ccd2', '#8d929b', '#4a4e57'] // light, mid, shadow
+import type { Biome, SolidKind, Team } from '../maps/parse.ts'
+
+export type Palette = readonly [light: string, mid: string, shadow: string]
+export type GroundColors = { body: Palette; lip: string }
+
+const GUNMETAL = ['#c9ccd2', '#8d929b', '#4a4e57'] as const satisfies Palette // light, mid, shadow
 
 export const TEAM = {
   blue: { label: 'ORANGE', accent: '#ff7a1a', hull: ['#fffaf0', '#efe2c4', '#a8977a'], laser: '#ff3b2f' },
   red: { label: 'RED', accent: '#e0312b', hull: GUNMETAL, laser: '#3dff5a' },
-}
+} as const satisfies Record<Team, { label: string; accent: string; hull: Palette; laser: string }>
+
+export type TeamColors = (typeof TEAM)[Team]
 
 // A map's biome. blocks: what the editor offers, in order. hills: backdrop shape (art/hills.ts).
 // tint: multiplied over the hills. rain: chance of a rainy game.
@@ -15,7 +22,10 @@ export const BIOMES = {
   desert: { label: 'Desert', blocks: ['rock', 'water', 'stone', 'concrete', 'metal', 'hazard', 'panel', 'glass'], hills: 'butte', tint: null, rain: 0.3 },
   jungle: { label: 'Jungle', blocks: ['rock', 'water', 'stone', 'planks', 'concrete', 'metal', 'hazard', 'glass'], hills: 'canopy', tint: '#8fcf8a', rain: 0.6 },
   nautic: { label: 'Nautic', blocks: ['rock', 'water', 'hull', 'planks', 'metal', 'hazard', 'glass'], hills: 'island', tint: '#9ac0dc', rain: 0.45 },
-}
+} as const satisfies Record<Biome, { label: string; blocks: readonly (SolidKind | 'rock')[]; hills: string; tint: string | null; rain: number }>
+
+export type BlockKind = (typeof BIOMES)[Biome]['blocks'][number]
+export type HillShape = (typeof BIOMES)[Biome]['hills']
 
 export const COLOR = {
   outline: '#2a2420',
@@ -66,7 +76,7 @@ export const COLOR = {
   text: '#fff3dc',
   textDim: 'rgba(255,243,220,0.75)',
   textShadow: 'rgba(0,0,0,0.6)',
-}
+} as const
 
 // Time of day. Each game picks one at random, with or without rain (odds per biome).
 // suns: x, y as a share of map size; glow: halo strength.
@@ -156,7 +166,10 @@ export const SKIES = {
     overcast: 'rgba(12,14,24,0.55)',
     rainCloud: ['rgba(20,22,34,0.95)', 'rgba(40,44,62,0.9)'],
   },
-}
+} as const satisfies Record<string, Record<string, unknown> & { ground: Record<Biome, GroundColors>; wood: Palette; stone: Palette; concrete: Palette; metal: Palette; panel: Palette }>
+
+export type Time = keyof typeof SKIES
+export type Sky = (typeof SKIES)[Time]
 
 export const RAIN = {
   drop: 'rgba(200,215,235,0.35)',

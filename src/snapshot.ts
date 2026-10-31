@@ -1,4 +1,17 @@
+import type { Game, GameEvent, ShownBullet, ShownRocket } from './sim/game.ts'
+import type { Rocket } from './sim/rocket.ts'
+import type { Team } from './maps/parse.ts'
 import { TEAMS } from './maps/parse.ts'
+
+export type Snapshot = {
+  time: number
+  winner: Team | null
+  teams: Record<Team, { score: number; flagCarrier: string | null }>
+  rockets: Omit<ShownRocket, 'team' | 'name'>[] // who's who comes from the roster
+  cannons: { aim: number; cooldown: number }[]
+  bullets: ShownBullet[]
+  events: GameEvent[]
+}
 
 // Host → joiner game state, 20×/s, as bytes instead of JSON (~10× smaller). Only what moves or
 // what the screen shows. Who's who, the map and the mode come once in a { type: 'roster' }
@@ -17,12 +30,12 @@ const CANNON = 8
 const BULLET = 17
 const EVENT = 10
 const NONE = 255
-const EVENT_KINDS = ['explode', 'capture']
+const EVENT_KINDS = ['explode', 'capture'] as const
 const ALIVE = 1
 const LEFT = 2
 const RIGHT = 4
 
-export function encodeSnapshot(game, events) {
+export function encodeSnapshot(game: Game, events: GameEvent[]): ArrayBuffer {
   const { rockets, cannons, bullets } = game
   const out = writer(HEADER + rockets.length * ROCKET + cannons.length * CANNON + bullets.length * BULLET + events.length * EVENT)
   out.d(game.time)
@@ -47,20 +60,20 @@ export function encodeSnapshot(game, events) {
   return out.done()
 }
 
-function writeRocket(out, r) {
-  out.f(r.x, r.y, r.angle, r.respawnAt ?? 0)
+function writeRocket(out: Writer, r: Rocket): void {
+  out.f(r.x, r.y, r.angle, r.respawnAt)
   out.b((r.alive ? ALIVE : 0) | (r.input.left ? LEFT : 0) | (r.input.right ? RIGHT : 0))
 }
 
 // ids: rocket ids in roster order.
-export function decodeSnapshot(buffer, ids) {
+export function decodeSnapshot(buffer: ArrayBuffer, ids: string[]): Snapshot {
   const at = reader(buffer)
   const time = at.d()
   const winner = TEAMS[at.b() - 1] ?? null
   const carriers = TEAMS.map(() => [at.b(), at.b()])
   const [rocketCount, cannonCount, bulletCount, eventCount] = [at.b(), at.b(), at.s(), at.b()]
   if (rocketCount !== ids.length) throw new Error(`Snapshot has ${rocketCount} rockets, roster has ${ids.length}. Roster message missed?`)
-  const teams = Object.fromEntries(TEAMS.map((team, i) => [team, { score: carriers[i][0], flagCarrier: ids[carriers[i][1]] ?? null }]))
+  const teams = Object.fromEntries(TEAMS.map((team, i) => [team, { score: carriers[i][0], flagCarrier: ids[carriers[i][1]] ?? null }])) as Snapshot['teams']
   const rockets = ids.map((id) => {
     const [x, y, angle, respawnAt] = [at.f(), at.f(), at.f(), at.f()]
     const flags = at.b()
@@ -73,12 +86,14 @@ export function decodeSnapshot(buffer, ids) {
   return { time, winner, teams, rockets, cannons, bullets, events }
 }
 
-const times = (n, make) => Array.from({ length: n }, make)
+const times = <T>(n: number, make: () => T): T[] => Array.from({ length: n }, make)
 
-function writer(size) {
+type Writer = ReturnType<typeof writer>
+
+function writer(size: number) {
   const view = new DataView(new ArrayBuffer(size))
   let at = 0
-  const put = (set, bytes, max) => (...values) => {
+  const put = (set: 'setFloat64' | 'setFloat32' | 'setUint16' | 'setUint8', bytes: number, max?: number) => (...values: number[]) => {
     for (const v of values) {
       if (max !== undefined && !(Number.isInteger(v) && v >= 0 && v <= max)) throw new RangeError(`Snapshot field at byte ${at}: ${v} isn't an integer 0–${max}`)
       view[set](at, v, true)
@@ -98,10 +113,10 @@ function writer(size) {
 }
 
 // Reading past the end throws (DataView's RangeError).
-function reader(buffer) {
+function reader(buffer: ArrayBuffer) {
   const view = new DataView(buffer)
   let at = 0
-  const get = (read, bytes) => () => {
+  const get = (read: 'getFloat64' | 'getFloat32' | 'getUint16' | 'getUint8', bytes: number) => () => {
     const v = view[read](at, true)
     at += bytes
     return v

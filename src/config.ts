@@ -43,3 +43,5 @@ export const config = {
     right: ['ShiftRight', 'ArrowRight'],
   },
 }
+
+export type Config = typeof config

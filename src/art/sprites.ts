@@ -2,6 +2,9 @@ import { FEET } from '../sim/rocket.ts'
 import { BARREL_LENGTH, PIVOT_HEIGHT, cannonPedestal } from '../sim/cannon.ts'
 import { COLOR, TEAM } from './theme.ts'
 import { TAU, additive, chrome, glowDot, shaded } from './brush.ts'
+import type { TeamColors } from './theme.ts'
+import type { Cannon } from '../sim/cannon.ts'
+import type { ShownBullet, ShownRocket } from '../sim/game.ts'
 
 // Things that move. Each draws a sim object at its own world position,
 // so /art.html can show them with fake objects.
@@ -10,8 +13,11 @@ import { TAU, additive, chrome, glowDot, shaded } from './brush.ts'
 const BODY = new Path2D('M0 -26 C5 -22 8 -14 8 -6 L8 6 Q8 9 5 9 L-5 9 Q-8 9 -8 6 L-8 -6 C-8 -14 -5 -22 0 -26 Z')
 const LASER_LENGTH = 24
 
+export type DrawnRocket = Pick<ShownRocket, 'x' | 'y' | 'team' | 'angle' | 'input'>
+export type DrawnCannon = Pick<Cannon, 'x' | 'y' | 'team' | 'aim'>
+
 // isMe: outline the local player's rocket so it stands out in multiplayer.
-export function drawRocket(ctx, r, engineOffset, isMe = false) {
+export function drawRocket(ctx: CanvasRenderingContext2D, r: DrawnRocket, engineOffset: number, isMe = false) {
   const colors = TEAM[r.team]
   ctx.save()
   ctx.translate(r.x, r.y)
@@ -37,7 +43,7 @@ export function drawRocket(ctx, r, engineOffset, isMe = false) {
 }
 
 // Landing legs with ball feet
-function drawLegs(ctx, accent) {
+function drawLegs(ctx: CanvasRenderingContext2D, accent: string) {
   ctx.strokeStyle = chrome(ctx, -13, 13)
   ctx.lineWidth = 1.6
   ctx.lineCap = 'round'
@@ -55,7 +61,7 @@ function drawLegs(ctx, accent) {
   }
 }
 
-function drawHull(ctx, { accent, hull }, isMe) {
+function drawHull(ctx: CanvasRenderingContext2D, { accent, hull }: TeamColors, isMe: boolean) {
   ctx.fillStyle = shaded(ctx, -8, 8, hull)
   ctx.fill(BODY)
   ctx.save()
@@ -76,7 +82,7 @@ function drawHull(ctx, { accent, hull }, isMe) {
   ctx.stroke(BODY)
 }
 
-function drawAntenna(ctx, accent) {
+function drawAntenna(ctx: CanvasRenderingContext2D, accent: string) {
   ctx.strokeStyle = chrome(ctx, -1, 1)
   ctx.lineWidth = 0.8
   ctx.beginPath()
@@ -90,7 +96,7 @@ function drawAntenna(ctx, accent) {
 }
 
 // Chrome ring, dark glass
-function drawPorthole(ctx) {
+function drawPorthole(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = chrome(ctx, -4, 4)
   ctx.beginPath()
   ctx.arc(0, -10, 4.2, 0, TAU)
@@ -106,7 +112,7 @@ function drawPorthole(ctx) {
 }
 
 // Bullet-nosed booster with a swept fin on its outer side.
-function drawPod(ctx, x, { accent, hull }) {
+function drawPod(ctx: CanvasRenderingContext2D, x: number, { accent, hull }: TeamColors) {
   const side = Math.sign(x) // -1 left, 1 right
   ctx.fillStyle = chrome(ctx, x - 4, x + 4)
   ctx.beginPath()
@@ -139,7 +145,7 @@ function drawPod(ctx, x, { accent, hull }) {
   ctx.fillRect(x - 4, 9.5, 8, 2.5)
 }
 
-function drawPlume(ctx, x, y) {
+function drawPlume(ctx: CanvasRenderingContext2D, x: number, y: number) {
   const len = 22 + Math.random() * 12
   const g = ctx.createLinearGradient(0, y, 0, y + len)
   g.addColorStop(0, COLOR.flame[0])
@@ -154,7 +160,7 @@ function drawPlume(ctx, x, y) {
 }
 
 // Ray-gun turret. firing: show a muzzle flash this frame.
-export function drawCannon(ctx, c, firing, clock) {
+export function drawCannon(ctx: CanvasRenderingContext2D, c: DrawnCannon, firing: boolean, clock: number) {
   const { accent, laser } = TEAM[c.team]
   const p = cannonPedestal(c)
   ctx.fillStyle = shaded(ctx, p.x, p.x + p.w, COLOR.gunmetal)
@@ -170,7 +176,7 @@ export function drawCannon(ctx, c, firing, clock) {
 }
 
 // Ribbed barrel with an emitter bulb
-function drawBarrel(ctx, c, laser, firing) {
+function drawBarrel(ctx: CanvasRenderingContext2D, c: DrawnCannon, laser: string, firing: boolean) {
   ctx.save()
   ctx.translate(c.x, c.y - PIVOT_HEIGHT)
   ctx.rotate(c.aim)
@@ -186,7 +192,7 @@ function drawBarrel(ctx, c, laser, firing) {
 }
 
 // Dome with glowing sensor eye
-function drawDome(ctx, c, accent) {
+function drawDome(ctx: CanvasRenderingContext2D, c: DrawnCannon, accent: string) {
   const top = cannonPedestal(c).y
   const eyeY = c.y - PIVOT_HEIGHT + 1
   ctx.fillStyle = shaded(ctx, c.x - 11, c.x + 11, COLOR.gunmetal)
@@ -204,7 +210,7 @@ function drawDome(ctx, c, accent) {
 }
 
 // Atom orbit with a circling electron
-function drawOrbit(ctx, c, accent, clock) {
+function drawOrbit(ctx: CanvasRenderingContext2D, c: DrawnCannon, accent: string, clock: number) {
   const cy = cannonPedestal(c).y - 5
   const tilt = -0.35
   ctx.strokeStyle = accent
@@ -220,12 +226,12 @@ function drawOrbit(ctx, c, accent, clock) {
   additive(ctx, () => glowDot(ctx, x, y, { radius: 4, color: accent }))
 }
 
-export function drawLaser(ctx, b) {
+export function drawLaser(ctx: CanvasRenderingContext2D, b: ShownBullet) {
   const { laser } = TEAM[b.team]
   const k = LASER_LENGTH / Math.hypot(b.vx, b.vy)
   additive(ctx, () => {
     ctx.lineCap = 'round'
-    for (const [width, color, alpha] of [[9, laser, 0.2], [4, laser, 0.7], [1.5, '#fff', 1]]) {
+    for (const [width, color, alpha] of [[9, laser, 0.2], [4, laser, 0.7], [1.5, '#fff', 1]] as const) {
       ctx.globalAlpha = alpha
       ctx.strokeStyle = color
       ctx.lineWidth = width

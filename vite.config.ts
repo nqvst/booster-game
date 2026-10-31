@@ -1,5 +1,8 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { defineConfig } from 'vite'
+import type { Plugin } from 'vite'
+import type { GameMap } from './src/maps/parse.ts'
 import { parseMap } from './src/maps/parse.ts'
 
 const MAPS_DIR = new URL('./src/maps/', import.meta.url)
@@ -12,7 +15,7 @@ export default defineConfig({
 
 // Dev server only: lets /editor.html read and write src/maps/*.json.
 // GET /__maps → { name: map }. PUT /__maps/<name> with the map as JSON body.
-function mapFiles() {
+function mapFiles(): Plugin {
   return {
     name: 'map-files',
     apply: 'serve',
@@ -20,7 +23,7 @@ function mapFiles() {
       server.middlewares.use('/__maps', (req, res) => {
         handle(req)
           .then((body) => send(res, 200, body))
-          .catch((err) => {
+          .catch((err: Error & { status?: number }) => {
             console.error(`[map-files] ${req.method} /__maps${req.url} failed:`, err.message)
             send(res, err.status ?? 500, { error: err.message })
           })
@@ -29,16 +32,16 @@ function mapFiles() {
   }
 }
 
-async function handle(req) {
+async function handle(req: IncomingMessage) {
   if (req.method === 'GET' && req.url === '/') return readMaps()
-  const name = decodeURIComponent(req.url.slice(1))
+  const name = decodeURIComponent((req.url ?? '').slice(1))
   if (req.method !== 'PUT') throw httpError(405, `${req.method} not supported`)
   if (!NAME.test(name)) throw httpError(400, `Map name "${name}" must be 1-40 chars of a-z, 0-9, -`)
-  let map
+  let map: GameMap
   try {
     map = parseMap(JSON.parse(await readBody(req)), name)
   } catch (err) {
-    throw httpError(400, err.message)
+    throw httpError(400, err instanceof Error ? err.message : String(err))
   }
   await writeFile(new URL(`${name}.json`, MAPS_DIR), formatMap(map))
   return { saved: name }
@@ -50,8 +53,8 @@ async function readMaps() {
   return Object.fromEntries(entries)
 }
 
-function readBody(req) {
-  return new Promise((resolve, reject) => {
+function readBody(req: IncomingMessage) {
+  return new Promise<string>((resolve, reject) => {
     let body = ''
     req.on('data', (chunk) => {
       body += chunk
@@ -63,16 +66,16 @@ function readBody(req) {
 }
 
 // Pretty JSON, but each rect / cannon on one line so diffs stay readable.
-function formatMap(map) {
+function formatMap(map: GameMap) {
   return JSON.stringify(map, null, 2).replace(/\{[^{}[\]]*\}/g, (obj) => JSON.stringify(JSON.parse(obj))) + '\n'
 }
 
-function send(res, status, body) {
+function send(res: ServerResponse, status: number, body: unknown) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(body))
 }
 
-function httpError(status, message) {
+function httpError(status: number, message: string) {
   return Object.assign(new Error(message), { status })
 }

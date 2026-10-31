@@ -1,5 +1,6 @@
 import { COLOR } from '../theme.ts'
 import { TAU, additive, chrome, glowDot, groundShadow, shaded } from '../brush.ts'
+import type { Point } from '../brush.ts'
 
 // Props that glow: street lamp, starburst sign, rotating beacon.
 
@@ -7,7 +8,7 @@ const LAMP = { height: 64, reach: 16, head: 9 } // pole height, how far the arm 
 const STAR = { height: 66, radius: 16 }
 
 // Googie street lamp: chrome pole, swooping arm, flying-saucer head pooling light on the ground.
-export function drawLamp(ctx, { x, y }, clock) {
+export function drawLamp(ctx: CanvasRenderingContext2D, { x, y }: Point, clock: number) {
   const top = y - LAMP.height
   const hx = x + LAMP.reach
   const flicker = 0.85 + 0.15 * Math.sin(clock * 9) * Math.sin(clock * 2.3)
@@ -52,7 +53,7 @@ export function drawLamp(ctx, { x, y }, clock) {
 }
 
 // Sputnik starburst sign on a chrome pole, pulsing orange.
-export function drawStarburst(ctx, { x, y }, clock) {
+export function drawStarburst(ctx: CanvasRenderingContext2D, { x, y }: Point, clock: number) {
   const cy = y - STAR.height + STAR.radius
   const pulse = 0.7 + 0.3 * Math.sin(clock * 3)
   groundShadow(ctx, x, y, 8)
@@ -69,7 +70,7 @@ export function drawStarburst(ctx, { x, y }, clock) {
   additive(ctx, () => glowDot(ctx, x, cy, { radius: 30, color: COLOR.trim, alpha: 0.5 * pulse }))
 }
 
-function star(ctx, { x, y, outer, inner }, color) {
+function star(ctx: CanvasRenderingContext2D, { x, y, outer, inner }: Point & { outer: number; inner: number }, color: string) {
   ctx.fillStyle = color
   ctx.beginPath()
   for (let i = 0; i < 16; i++) {
@@ -82,7 +83,7 @@ function star(ctx, { x, y, outer, inner }, color) {
 }
 
 // Airport-style beacon: cream drum, chrome ring, red dome, beam sweeping round once per 2 s.
-export function drawBeacon(ctx, { x, y }, clock) {
+export function drawBeacon(ctx: CanvasRenderingContext2D, { x, y }: Point, clock: number) {
   const a = clock * Math.PI
   const across = Math.cos(a) // beam direction left ↔ right
   const toward = Math.sin(a) // > 0: beam swings past the viewer, dome flares

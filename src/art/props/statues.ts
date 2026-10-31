@@ -1,8 +1,9 @@
 import { COLOR } from '../theme.ts'
 import { TAU, groundShadow, shaded } from '../brush.ts'
+import type { Point } from '../brush.ts'
 
 // Stone idol in profile on a stepped plinth, moss on its crown. Faces right; flip it to face left.
-export function drawStatue(ctx, { x, y }) {
+export function drawStatue(ctx: CanvasRenderingContext2D, { x, y }: Point) {
   groundShadow(ctx, x, y, 18)
   ctx.fillStyle = shaded(ctx, x - 18, x + 18, COLOR.stoneShaded)
   ctx.fillRect(x - 18, y - 6, 36, 6)

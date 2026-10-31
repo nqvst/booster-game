@@ -1,5 +1,6 @@
 import { flagHome, hasFlag } from '../sim/game.ts'
-import { PROP_KINDS } from '../maps/parse.ts'
+import { TEAMS } from '../maps/parse.ts'
+import type { Biome, CannonSpot, GameMap, Rect } from '../maps/parse.ts'
 import { cannonPedestal } from '../sim/cannon.ts'
 import { COLOR, SKIES } from '../art/theme.ts'
 import { fitCanvas } from '../art/brush.ts'
@@ -7,7 +8,9 @@ import { drawFlag, drawPad } from '../art/scenery.ts'
 import { drawRock, drawSolid } from '../art/solids.ts'
 import { drawProp, propBounds } from '../art/props/index.ts'
 import { drawCannon } from '../art/sprites.ts'
-import { GRID, boundsOf } from './model.ts'
+import { context2d } from '../dom.ts'
+import { GRID, boundsOf, isPropKind } from './model.ts'
+import type { Editor, PlacingTool, Point } from './model.ts'
 
 // Plain daylight, no weather or parallax: easy to see what's where.
 // Play the map for the real look.
@@ -18,8 +21,12 @@ const SELECT = '#ff7a1a'
 const PREVIEW_BLOCK = { w: 120, h: 60 } // world units shown in a block tool's tile
 const PREVIEW_GROUND = 8 // rock under a prop in its tile
 
-export function drawEditor(canvas, editor, clock) {
-  const ctx = canvas.getContext('2d')
+type Ctx = CanvasRenderingContext2D
+// In world units, drawing into 0..w × 0..h.
+type PreviewBox = { w: number; h: number; draw: (ctx: Ctx) => void }
+
+export function drawEditor(canvas: HTMLCanvasElement, editor: Editor, clock: number): void {
+  const ctx = context2d(canvas)
   const { dpr, w, h } = fitCanvas(canvas)
   const { map, view } = editor
   const scale = view.zoom * dpr
@@ -32,7 +39,8 @@ export function drawEditor(canvas, editor, clock) {
   drawGrid(ctx, map, 1 / view.zoom)
   for (const s of map.solids) drawSolid(ctx, s, SKY, map.biome)
   for (const c of map.cannons) drawStandingCannon(ctx, c, map.biome, clock)
-  for (const [team, base] of Object.entries(map.bases)) {
+  for (const team of TEAMS) {
+    const base = map.bases[team]
     drawPad(ctx, base.pad, team, clock)
     if (hasFlag(map.mode, team)) drawFlag(ctx, flagHome(base), team, clock)
   }
@@ -42,8 +50,8 @@ export function drawEditor(canvas, editor, clock) {
 }
 
 // Tool tile: the object as it looks on a map of this biome, fitted into the canvas.
-export function drawPreview(canvas, tool, biome) {
-  const ctx = canvas.getContext('2d')
+export function drawPreview(canvas: HTMLCanvasElement, tool: PlacingTool, biome: Biome): void {
+  const ctx = context2d(canvas)
   const { w, h } = fitCanvas(canvas)
   const box = previewBox(tool, biome)
   const scale = Math.min(w / box.w, h / box.h) * 0.85
@@ -53,17 +61,16 @@ export function drawPreview(canvas, tool, biome) {
   box.draw(ctx)
 }
 
-// { w, h, draw } in world units, drawing into 0..w × 0..h.
-function previewBox(tool, biome) {
+function previewBox(tool: PlacingTool, biome: Biome): PreviewBox {
   const { w, h } = PREVIEW_BLOCK
   if (tool === 'water') return { w, h, draw: (ctx) => drawWater(ctx, { x: 0, y: 0, w, h }) }
-  if (tool === 'cannon') return standing(boundsOf({ kind: 'cannon', obj: { x: 0, y: 0 } }), biome, (ctx, c) => drawStandingCannon(ctx, { ...c, team: 'red' }, biome, 0))
-  if (PROP_KINDS.includes(tool)) return standing(propBounds({ kind: tool, x: 0, y: 0 }), biome, (ctx, p) => drawProp(ctx, { ...p, kind: tool }, 0))
-  return { w, h, draw: (ctx) => drawSolid(ctx, { x: 0, y: 0, w, h, kind: tool }, SKY, biome) }
+  if (tool === 'cannon') return standing(boundsOf({ kind: 'cannon', obj: { x: 0, y: 0, team: 'red' } }), biome, (ctx, c) => drawStandingCannon(ctx, { ...c, team: 'red' }, biome, 0))
+  if (isPropKind(tool)) return standing(propBounds({ kind: tool, x: 0, y: 0 }), biome, (ctx, p) => drawProp(ctx, { ...p, kind: tool }, 0))
+  return { w, h, draw: (ctx) => drawSolid(ctx, { x: 0, y: 0, w, h, ...(tool !== 'rock' && { kind: tool }) }, SKY, biome) }
 }
 
 // Something with its foot at (0, 0) and the given bounds, on a strip of rock.
-function standing(bounds, biome, draw) {
+function standing(bounds: Rect, biome: Biome, draw: (ctx: Ctx, foot: Point) => void): PreviewBox {
   const pad = 6
   const w = bounds.w + pad * 2
   const h = bounds.h + PREVIEW_GROUND + pad
@@ -71,19 +78,19 @@ function standing(bounds, biome, draw) {
   return {
     w,
     h,
-    draw(ctx) {
+    draw(ctx: Ctx) {
       drawRock(ctx, { x: 0, y: foot.y, w, h: PREVIEW_GROUND }, SKY, biome)
       draw(ctx, foot)
     },
   }
 }
 
-function drawStandingCannon(ctx, c, biome, clock) {
+function drawStandingCannon(ctx: Ctx, c: CannonSpot, biome: Biome, clock: number): void {
   drawRock(ctx, cannonPedestal(c), SKY, biome)
   drawCannon(ctx, { ...c, aim: -Math.PI / 2 }, false, clock)
 }
 
-function drawSky(ctx, { width, height }, gradientHeight) {
+function drawSky(ctx: Ctx, { width, height }: Pick<GameMap, 'width' | 'height'>, gradientHeight: number): void {
   const g = ctx.createLinearGradient(0, 0, 0, gradientHeight)
   for (const [at, color] of SKY.sky) g.addColorStop(at, color)
   ctx.fillStyle = g
@@ -91,7 +98,7 @@ function drawSky(ctx, { width, height }, gradientHeight) {
 }
 
 // px: one screen pixel in world units.
-function drawGrid(ctx, map, px) {
+function drawGrid(ctx: Ctx, map: GameMap, px: number): void {
   ctx.fillStyle = 'rgba(255,255,255,0.18)'
   for (let x = 0; x <= map.width; x += GRID_MAJOR) ctx.fillRect(x, 0, px, map.height)
   for (let y = 0; y <= map.height; y += GRID_MAJOR) ctx.fillRect(0, y, map.width, px)
@@ -100,7 +107,7 @@ function drawGrid(ctx, map, px) {
   ctx.strokeRect(0, 0, map.width, map.height)
 }
 
-function drawWater(ctx, s) {
+function drawWater(ctx: Ctx, s: Rect): void {
   ctx.fillStyle = WATER_BASE
   ctx.fillRect(s.x, s.y, s.w, s.h)
   const tint = ctx.createLinearGradient(0, s.y, 0, s.y + s.h)
@@ -112,7 +119,7 @@ function drawWater(ctx, s) {
   ctx.fillRect(s.x, s.y, s.w, 2)
 }
 
-function drawSelection(ctx, r, px) {
+function drawSelection(ctx: Ctx, r: Rect, px: number): void {
   ctx.strokeStyle = SELECT
   ctx.lineWidth = 2 * px
   ctx.setLineDash([6 * px, 4 * px])

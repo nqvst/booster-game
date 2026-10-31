@@ -1,8 +1,11 @@
+import type { Config } from './config.ts'
+import { byId } from './dom.ts'
+
 // Live tweak panel: press ` (or tap ⚙). Edits mutate config in place; the sim
 // reads it every tick. "Copy" gives JSON to paste back into config.ts.
-export function createTuningPanel(config) {
-  const panel = document.getElementById('tuning')
-  const toggle = document.getElementById('tune-toggle')
+export function createTuningPanel(config: Config): void {
+  const panel = byId('tuning')
+  const toggle = byId('tune-toggle')
 
   for (const [section, values] of Object.entries(config)) {
     if (typeof values === 'object') addSection(panel, section, values)
@@ -16,7 +19,7 @@ export function createTuningPanel(config) {
   })
 }
 
-function addSection(panel, section, values) {
+function addSection(panel: HTMLElement, section: string, values: Record<string, unknown>) {
   const keys = Object.keys(values).filter((k) => typeof values[k] === 'number' || typeof values[k] === 'boolean')
   if (!keys.length) return
   const fieldset = panel.appendChild(document.createElement('fieldset'))
@@ -25,7 +28,7 @@ function addSection(panel, section, values) {
 }
 
 // Edits values[key] in place.
-function addField(fieldset, values, key) {
+function addField(fieldset: HTMLFieldSetElement, values: Record<string, unknown>, key: string) {
   const value = values[key]
   const label = fieldset.appendChild(document.createElement('label'))
   label.append(key)
@@ -36,15 +39,16 @@ function addField(fieldset, values, key) {
     input.onchange = () => (values[key] = input.checked)
     return
   }
+  if (typeof value !== 'number') return
   input.type = 'number'
-  input.step = 10 ** (Math.floor(Math.log10(Math.abs(value) || 1)) - 1)
-  input.value = value
+  input.step = String(10 ** (Math.floor(Math.log10(Math.abs(value) || 1)) - 1))
+  input.value = String(value)
   input.oninput = () => {
     if (Number.isFinite(input.valueAsNumber)) values[key] = input.valueAsNumber
   }
 }
 
-function addCopyButton(panel, config) {
+function addCopyButton(panel: HTMLElement, config: Config) {
   const copy = panel.appendChild(document.createElement('button'))
   copy.textContent = 'Copy config JSON'
   copy.onclick = () =>

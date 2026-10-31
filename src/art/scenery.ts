@@ -3,6 +3,9 @@ import { BIOMES, COLOR, RAIN, SKIES, TEAM } from './theme.ts'
 import { TAU, additive, chrome, glowDot, rand } from './brush.ts'
 import { drawSea, layoutSea } from './sea.ts'
 import { drawHills, layoutHills } from './hills.ts'
+import type { Point } from './brush.ts'
+import type { Sky, Time } from './theme.ts'
+import type { Biome, GameMap, Rect, Team } from '../maps/parse.ts'
 
 // Things that stay put: sky, weather, distant hills, sea, landing pads, flags.
 // Solids are in solids.ts, props in props/, hills in hills.ts.
@@ -11,39 +14,44 @@ import { drawHills, layoutHills } from './hills.ts'
 const SKY_LAYER = 0.1 // stars, suns
 const CLOUD_LAYER = 0.15 // clouds, passing ships
 
-// weather: { time: key of SKIES, rain: boolean }. Rain odds depend on the biome.
-export function randomWeather(biome) {
+export type Weather = { time: Time; rain: boolean }
+export type Scenery = ReturnType<typeof createScenery>
+type Scene = ReturnType<typeof layoutScene>
+type Lightning = { next: number; at: number } // when the next bolt strikes, when the last one did
+
+// Rain odds depend on the biome.
+export function randomWeather(biome: Biome): Weather {
   if (!BIOMES[biome]) throw new Error(`randomWeather: unknown biome "${biome}", expected one of ${Object.keys(BIOMES)}`)
-  const times = Object.keys(SKIES)
+  const times = Object.keys(SKIES) as Time[]
   return { time: times[Math.floor(Math.random() * times.length)], rain: Math.random() < BIOMES[biome].rain }
 }
 
 // Random layout is generated once per map.
 // Solids tagged `water` are drawn as sea; draw everything else first, then water().
-export function createScenery(map, weather) {
+export function createScenery(map: GameMap, weather: Weather) {
   const sky = SKIES[weather.time]
   if (!sky) throw new Error(`createScenery: unknown time "${weather.time}", expected one of ${Object.keys(SKIES)}`)
   const scene = layoutScene(map, sky, weather.rain)
   const seas = map.solids.filter((s) => s.kind === 'water').map((rect) => layoutSea(rect, map.solids, weather.rain))
   const mirror = document.createElement('canvas')
-  const lightning = { next: rand(3, 8), at: -Infinity }
+  const lightning: Lightning = { next: rand(3, 8), at: -Infinity }
 
   return {
     weather,
     sky,
 
     // cx, cy: camera center in world units.
-    backdrop(ctx, cx, cy, clock) {
+    backdrop(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number) {
       drawBackdrop(ctx, scene, { x: cx - map.width / 2, y: cy - map.height / 2 }, clock)
     },
 
-    water(ctx, cx, clock) {
+    water(ctx: CanvasRenderingContext2D, cx: number, clock: number) {
       const sunX = sky.suns[0].x * map.width + (cx - map.width / 2) * (1 - SKY_LAYER)
       for (const sea of seas) drawSea(ctx, sea, { sky, rain: weather.rain, sunX, mirror }, clock)
     },
 
     // Screen space, over the whole canvas but the HUD. ox, oy: camera offset in pixels, so rain drifts past.
-    rain(ctx, ox, oy, clock) {
+    rain(ctx: CanvasRenderingContext2D, ox: number, oy: number, clock: number) {
       if (!weather.rain) return
       drawRain(ctx, scene.drops, { x: ox, y: oy }, clock)
       drawLightning(ctx, lightning, clock)
@@ -51,7 +59,7 @@ export function createScenery(map, weather) {
   }
 }
 
-function layoutScene(map, sky, rain) {
+function layoutScene(map: GameMap, sky: Sky, rain: boolean) {
   const { width, height } = map
   return {
     map,
@@ -83,7 +91,7 @@ function layoutScene(map, sky, rain) {
 }
 
 // offset: camera center minus map center, world units.
-function drawBackdrop(ctx, scene, offset, clock) {
+function drawBackdrop(ctx: CanvasRenderingContext2D, scene: Scene, offset: Point, clock: number) {
   const { map, sky, rain } = scene
   const g = ctx.createLinearGradient(0, 0, 0, map.height)
   for (const [at, color] of sky.sky) g.addColorStop(at, color)
@@ -105,14 +113,14 @@ function drawBackdrop(ctx, scene, offset, clock) {
   for (const m of scene.hills) parallax(ctx, m.k, offset, () => drawHills(ctx, m, scene, clock))
 }
 
-function parallax(ctx, k, offset, draw) {
+function parallax(ctx: CanvasRenderingContext2D, k: number, offset: Point, draw: () => void) {
   ctx.save()
   ctx.translate(offset.x * (1 - k), offset.y * (1 - k))
   draw()
   ctx.restore()
 }
 
-function drawStars(ctx, { stars, sky, map }, clock) {
+function drawStars(ctx: CanvasRenderingContext2D, { stars, sky, map }: Scene, clock: number) {
   ctx.fillStyle = COLOR.star
   for (const s of stars) {
     ctx.globalAlpha = sky.stars * (1 - s.y / (map.height * 0.6)) * (0.65 + 0.35 * Math.sin(clock * 2 + s.phase))
@@ -121,7 +129,7 @@ function drawStars(ctx, { stars, sky, map }, clock) {
   ctx.globalAlpha = 1
 }
 
-function drawSuns(ctx, sky, { width, height }) {
+function drawSuns(ctx: CanvasRenderingContext2D, sky: Sky, { width, height }: Pick<GameMap, 'width' | 'height'>) {
   additive(ctx, () => {
     for (const s of sky.suns) glowDot(ctx, s.x * width, s.y * height, { radius: s.r * 7, color: sky.sunGlow, alpha: sky.glow })
   })
@@ -133,7 +141,7 @@ function drawSuns(ctx, sky, { width, height }) {
   }
 }
 
-function drawClouds(ctx, { clouds, sky, rain }) {
+function drawClouds(ctx: CanvasRenderingContext2D, { clouds, sky, rain }: Scene) {
   const [top, bottom] = rain ? sky.rainCloud : sky.cloud
   for (const c of clouds) {
     const cg = ctx.createLinearGradient(0, c.y - c.ry, 0, c.y + c.ry)
@@ -146,7 +154,7 @@ function drawClouds(ctx, { clouds, sky, rain }) {
   }
 }
 
-function drawShips(ctx, { ships, map }, clock) {
+function drawShips(ctx: CanvasRenderingContext2D, { ships, map }: Scene, clock: number) {
   const span = map.width + 1000
   additive(ctx, () => {
     for (const s of ships) {
@@ -158,7 +166,7 @@ function drawShips(ctx, { ships, map }, clock) {
 }
 
 // Sized to the canvas; call with an identity transform. offset: camera, in pixels.
-function drawRain(ctx, drops, offset, clock) {
+function drawRain(ctx: CanvasRenderingContext2D, drops: Scene['drops'], offset: Point, clock: number) {
   const { width: w, height: h } = ctx.canvas
   const len = h * 0.04
   const wind = 0.25
@@ -176,8 +184,7 @@ function drawRain(ctx, drops, offset, clock) {
   }
 }
 
-// lightning: { next, at } — when the next bolt strikes and when the last one did.
-function drawLightning(ctx, lightning, clock) {
+function drawLightning(ctx: CanvasRenderingContext2D, lightning: Lightning, clock: number) {
   if (clock > lightning.next) {
     lightning.at = clock
     lightning.next = clock + rand(5, 12)
@@ -191,7 +198,7 @@ function drawLightning(ctx, lightning, clock) {
 }
 
 // Fills the whole pad rect (it's a solid too).
-export function drawPad(ctx, pad, team, clock) {
+export function drawPad(ctx: CanvasRenderingContext2D, pad: Rect, team: Team, clock: number) {
   const { x, y, w, h } = pad
   const { accent } = TEAM[team]
   ctx.fillStyle = COLOR.metalDark
@@ -212,7 +219,7 @@ export function drawPad(ctx, pad, team, clock) {
   drawLampPosts(ctx, pad, accent, clock)
 }
 
-function drawHazardStripes(ctx, { x, y, w }, accent) {
+function drawHazardStripes(ctx: CanvasRenderingContext2D, { x, y, w }: Rect, accent: string) {
   ctx.save()
   ctx.beginPath()
   ctx.rect(x, y + 4, w, 5)
@@ -230,7 +237,7 @@ function drawHazardStripes(ctx, { x, y, w }, accent) {
 }
 
 // Googie lamp posts with ball lamps
-function drawLampPosts(ctx, { x, y, w }, accent, clock) {
+function drawLampPosts(ctx: CanvasRenderingContext2D, { x, y, w }: Rect, accent: string, clock: number) {
   const blink = Math.sin(clock * 4) > 0 ? 1 : 0.35
   for (const lx of [x + 5, x + w - 5]) {
     ctx.fillStyle = chrome(ctx, lx - 1, lx + 1)
@@ -245,12 +252,11 @@ function drawLampPosts(ctx, { x, y, w }, accent, clock) {
   })
 }
 
-// foot: { x, y } of the pole.
-export function drawFlag(ctx, foot, team, clock) {
+export function drawFlag(ctx: CanvasRenderingContext2D, foot: Point, team: Team, clock: number) {
   const { x, y } = foot
   const { accent } = TEAM[team]
   const top = y - FLAG_HEIGHT
-  const wave = (t) => Math.sin(clock * 6 - t * 5) * 2 * t
+  const wave = (t: number) => Math.sin(clock * 6 - t * 5) * 2 * t
 
   ctx.fillStyle = COLOR.cream
   ctx.fillRect(x - 1, top, 2, FLAG_HEIGHT)

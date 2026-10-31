@@ -1,17 +1,20 @@
 import { COLOR } from './theme.ts'
 import { TAU } from './brush.ts'
+import type { GroundColors, Palette } from './theme.ts'
+import type { Biome, Rect } from '../maps/parse.ts'
 
 // The natural ground of each biome: what a 'rock' solid looks like there.
-// sky.ground[biome] = { body: [top, mid, base], lip }.
 
-export const GROUND_ART = { desert: drawSandstone, jungle: drawMossStone, nautic: drawBasalt }
+type DrawGround = (ctx: CanvasRenderingContext2D, s: Rect, colors: GroundColors) => void
+
+export const GROUND_ART: Record<Biome, DrawGround> = { desert: drawSandstone, jungle: drawMossStone, nautic: drawBasalt }
 
 const STRATA = 17
 const CRACK = 50 // moss stone: one crack per this many units of width
 const VINE = 60 // moss stone: one vine per this many units of width
 
 // Layered sandstone with a sunlit lip.
-function drawSandstone(ctx, s, { body, lip }) {
+function drawSandstone(ctx: CanvasRenderingContext2D, s: Rect, { body, lip }: GroundColors) {
   vertical(ctx, s, body, 20)
   ctx.fillStyle = COLOR.strata
   for (let y = s.y + 14; y < s.y + s.h; y += STRATA) ctx.fillRect(s.x, y, s.w, 1.5)
@@ -21,7 +24,7 @@ function drawSandstone(ctx, s, { body, lip }) {
 }
 
 // Dark stone with cracks, a grassy top and vines hanging off the underside.
-function drawMossStone(ctx, s, { body, lip }) {
+function drawMossStone(ctx: CanvasRenderingContext2D, s: Rect, { body, lip }: GroundColors) {
   vertical(ctx, s, body, 24)
   ctx.strokeStyle = COLOR.seam
   ctx.lineWidth = 1.5
@@ -52,7 +55,7 @@ function drawMossStone(ctx, s, { body, lip }) {
 }
 
 // Wet basalt: tide-darkened base, barnacles and a coral tuft or two, spray-white lip.
-function drawBasalt(ctx, s, { body, lip }) {
+function drawBasalt(ctx: CanvasRenderingContext2D, s: Rect, { body, lip }: GroundColors) {
   vertical(ctx, s, body, 18)
   const tide = Math.min(s.h, 22)
   const wet = ctx.createLinearGradient(0, s.y + s.h - tide, 0, s.y + s.h)
@@ -82,7 +85,7 @@ function drawBasalt(ctx, s, { body, lip }) {
 }
 
 // Top-lit gradient: colors = [top, mid, base], mid reached `lit` units down.
-export function vertical(ctx, s, [top, mid, base], lit) {
+export function vertical(ctx: CanvasRenderingContext2D, s: Rect, [top, mid, base]: Palette, lit: number) {
   const g = ctx.createLinearGradient(0, s.y, 0, s.y + s.h)
   g.addColorStop(0, top)
   g.addColorStop(s.h > 0 ? Math.min(1, lit / s.h) : 1, mid) // h is 0 while a new block is dragged out

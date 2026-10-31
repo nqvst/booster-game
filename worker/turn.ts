@@ -5,12 +5,14 @@
 // env.TURN_KEY_ID: TURN key id (var). env.TURN_KEY_API_TOKEN: its API token (secret).
 // env.ALLOWED_ORIGINS: comma-separated pages allowed to ask (var).
 
+type Env = { ALLOWED_ORIGINS: string; TURN_KEY_ID: string; TURN_KEY_API_TOKEN: string }
+
 const TTL_SECONDS = 24 * 60 * 60 // a host keeps its credentials for the whole session
 
 export default {
-  async fetch(request, env) {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get('Origin')
-    if (!env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).includes(origin)) {
+    if (!origin || !env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).includes(origin)) {
       return new Response(`Origin ${origin} not allowed`, { status: 403 })
     }
     const cors = { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' }

@@ -1,4 +1,33 @@
 import { Peer } from 'peerjs'
+import type { DataConnection, PeerOptions } from 'peerjs'
+import type { Input } from './sim/rocket.ts'
+import type { Mode, Team } from './maps/parse.ts'
+
+// JSON the host sends joiners, next to binary snapshots (src/snapshot.ts).
+export type RoomPlayer = { id: string; name: string; team: Team }
+export type RosterMessage = { type: 'roster'; mapName: string; mode: Mode; players: RoomPlayer[] }
+export type LobbyMessage = { type: 'lobby'; mapName: string; players: RoomPlayer[] }
+export type HostMessage = RosterMessage | LobbyMessage | { type: 'full' } | { type: 'version' }
+
+export type HostHandlers = {
+  onJoin(id: string, name: string): boolean // false refuses: the room is full
+  onLeave(id: string): void
+  onInput(id: string, input: Input): void
+  onError(err: Error): void
+}
+
+export type JoinHandlers = {
+  onSnapshot(buffer: ArrayBuffer): void
+  onRoster(roster: RosterMessage): void
+  onLobby(lobby: LobbyMessage): void
+  onClose(reason: string): void // fires at most once, only after joining
+}
+
+export type Room = { code: string; broadcast(msg: ArrayBuffer | HostMessage): void }
+export type RoomClient = { id: string; sendInput(input: Input): void; leave(reason: string): void }
+
+// conn → last message time
+type Players = Map<DataConnection, number>
 
 // Peer-to-peer over WebRTC. The public PeerJS server only brokers the handshake;
 // game traffic goes browser to browser. The host runs the only real sim.
@@ -20,7 +49,7 @@ const CREDENTIALS_TIMEOUT_MS = 5000
 
 // Peer options with fresh TURN credentials. Players who can't connect directly
 // (strict NAT, mobile data, office wifi) go through the relay.
-async function peerOptions() {
+async function peerOptions(): Promise<Partial<PeerOptions>> {
   if (!TURN_CREDENTIALS_URL) {
     console.warn("TURN_CREDENTIALS_URL not set in src/net.ts: using PeerJS's public relay. See worker/wrangler.toml")
     return {}
@@ -32,14 +61,19 @@ async function peerOptions() {
     if (!Array.isArray(body.iceServers)) throw new Error(`expected { iceServers: [...] }, got keys ${Object.keys(body)}`)
     return { config: { iceServers: body.iceServers } }
   } catch (err) {
-    throw new Error(`couldn't get relay credentials from ${TURN_CREDENTIALS_URL}: ${err.message}`, { cause: err })
+    throw new Error(`couldn't get relay credentials from ${TURN_CREDENTIALS_URL}: ${errorMessage(err)}`, { cause: err })
   }
+}
+
+// What a catch clause caught, for showing. Anything can be thrown, so it may not be an Error.
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
 }
 
 const NAME_LENGTH = 16
 
 // Player names come from other browsers: plain text, one line, short.
-export function cleanName(raw) {
+export function cleanName(raw: unknown): string {
   const name = typeof raw === 'string' ? raw.replace(/\s+/g, ' ').trim().slice(0, NAME_LENGTH) : ''
   return name || 'Pilot'
 }
@@ -48,13 +82,12 @@ function randomCode() {
   return Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => CODE_CHARS[b % CODE_CHARS.length]).join('')
 }
 
-// handlers: { onJoin(id, name) → accepted?, onLeave(id), onInput(id, input), onError(err) }
-export async function hostRoom(handlers) {
+export async function hostRoom(handlers: HostHandlers): Promise<Room> {
   const options = await peerOptions()
   return new Promise((resolve, reject) => {
     const code = randomCode()
     const peer = new Peer(ID_PREFIX + code, options)
-    const players = new Map() // conn → last message time
+    const players: Players = new Map()
     let opened = false
 
     peer.on('open', () => {
@@ -77,8 +110,7 @@ export async function hostRoom(handlers) {
   })
 }
 
-// players: conn → last message time
-function acceptPlayer(players, conn, handlers) {
+function acceptPlayer(players: Players, conn: DataConnection, handlers: HostHandlers): void {
   conn.on('open', () => {
     // Older joiners use PeerJS's JSON channel and don't send a protocol; they just see the host leave.
     if (conn.serialization !== 'raw' || conn.metadata?.protocol !== PROTOCOL) refuse(conn, 'version')
@@ -95,12 +127,12 @@ function acceptPlayer(players, conn, handlers) {
   conn.on('error', handlers.onError)
 }
 
-function refuse(conn, type) {
+function refuse(conn: DataConnection, type: 'full' | 'version'): void {
   if (conn.serialization === 'raw') conn.send(JSON.stringify({ type }))
   setTimeout(() => conn.close(), 500)
 }
 
-function dropPlayer(players, conn, handlers) {
+function dropPlayer(players: Players, conn: DataConnection, handlers: HostHandlers): void {
   if (!players.delete(conn)) return
   conn.close()
   handlers.onLeave(conn.peer)
@@ -110,13 +142,12 @@ function dropPlayer(players, conn, handlers) {
 // (strict NAT, mobile data, relay down), WebRTC can stay "checking" without ever failing.
 const JOIN_TIMEOUT_MS = 15000
 
-// handlers: { onSnapshot(ArrayBuffer), onRoster(roster), onLobby(lobby), onClose(reason) }. onClose fires at most once, only after joining.
-export async function joinRoom(code, name, handlers) {
+export async function joinRoom(code: string, name: string, handlers: JoinHandlers): Promise<RoomClient> {
   const options = await peerOptions()
   return new Promise((resolve, reject) => {
     const peer = new Peer(options)
-    let link = null // set once connected: { close(reason) }
-    const fail = (err) => {
+    let link: { close(reason: string): void } | null = null // set once connected
+    const fail = (err: Error) => {
       clearTimeout(timer)
       peer.destroy()
       reject(err)
@@ -125,7 +156,7 @@ export async function joinRoom(code, name, handlers) {
       () => fail(new Error(`no answer from host after ${JOIN_TIMEOUT_MS / 1000}s. A firewall or mobile network may be blocking it`)),
       JOIN_TIMEOUT_MS,
     )
-    const onError = (err) => (link ? link.close(`Connection error: ${err.message}`) : fail(err))
+    const onError = (err: Error) => (link ? link.close(`Connection error: ${err.message}`) : fail(err))
 
     peer.on('error', onError)
     peer.on('open', (id) => {
@@ -133,11 +164,12 @@ export async function joinRoom(code, name, handlers) {
       conn.on('error', onError) // failing before open emits 'error' but never 'close'
       conn.on('open', () => {
         clearTimeout(timer)
-        link = watchHost(peer, conn, handlers)
+        const hostLink = watchHost(peer, conn, handlers)
+        link = hostLink
         resolve({
           id,
           sendInput: inputSender(conn),
-          leave: (reason) => link.close(reason),
+          leave: (reason) => hostLink.close(reason),
         })
       })
     })
@@ -145,7 +177,7 @@ export async function joinRoom(code, name, handlers) {
 }
 
 // Sends only changes, plus a heartbeat so the host knows we're still here.
-function inputSender(conn) {
+function inputSender(conn: DataConnection): (input: Input) => void {
   let sent = -1
   let sentAt = 0
   return ({ left, right }) => {
@@ -159,10 +191,10 @@ function inputSender(conn) {
 }
 
 // Connected: route the host's messages; silence means the host is gone.
-function watchHost(peer, conn, handlers) {
+function watchHost(peer: Peer, conn: DataConnection, handlers: JoinHandlers): { close(reason: string): void } {
   let closed = false
   let lastSeen = Date.now()
-  const close = (reason) => {
+  const close = (reason: string) => {
     if (closed) return
     closed = true
     clearInterval(watchdog)
@@ -176,8 +208,8 @@ function watchHost(peer, conn, handlers) {
     lastSeen = Date.now()
     const msg = data instanceof ArrayBuffer ? null : parseJson(data)
     if (data instanceof ArrayBuffer) handlers.onSnapshot(data)
-    else if (msg?.type === 'roster') handlers.onRoster(msg)
-    else if (msg?.type === 'lobby') handlers.onLobby(msg)
+    else if (msg?.type === 'roster') handlers.onRoster(msg as RosterMessage)
+    else if (msg?.type === 'lobby') handlers.onLobby(msg as LobbyMessage)
     else if (msg?.type === 'full') close('Room is full')
     else close('Host runs another version of the game. Reload both pages')
   })
@@ -186,9 +218,9 @@ function watchHost(peer, conn, handlers) {
 }
 
 // Text from the host that isn't JSON comes from a host on another version.
-function parseJson(text) {
+function parseJson(text: unknown): { type?: string } | null {
   try {
-    return JSON.parse(text)
+    return JSON.parse(String(text))
   } catch (err) {
     console.error('Unreadable message from host', text, err)
     return null

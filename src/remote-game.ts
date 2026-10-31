@@ -1,4 +1,8 @@
-import { createGame } from './sim/game.ts'
+import type { GameMap } from './maps/parse.ts'
+import type { GameEvent, GameView, ShownRocket } from './sim/game.ts'
+import type { RosterMessage } from './net.ts'
+import type { Snapshot } from './snapshot.ts'
+import { createGame, teamEntries } from './sim/game.ts'
 import { NO_INPUT } from './sim/rocket.ts'
 import { wrapAngle } from './sim/geometry.ts'
 import { decodeSnapshot } from './snapshot.ts'
@@ -15,15 +19,15 @@ const SLEW = 0.02
 const STALE_EVENTS = 0.5 // seconds: events this far behind (tab was hidden) are dropped, not replayed
 
 export function createRemoteGame() {
-  let game = null
-  let ids = [] // rocket ids in roster order, how snapshots list them
+  let game: (GameView & { mapName: string }) | null = null
+  let ids: string[] = [] // rocket ids in roster order, how snapshots list them
   let timeline = createTimeline()
   return {
     get game() {
       return game
     },
-    // { mapName, mode, players: [{ id, name, team }] }: a new match, or players joined, left or switched team.
-    roster(map, { mapName, mode, players }) {
+    // A new match, or players joined, left or switched team.
+    roster(map: GameMap, { mapName, mode, players }: RosterMessage) {
       if (game?.mapName !== mapName || game.mode !== mode) {
         game = { ...createGame(map, [], mode), mapName }
         timeline = createTimeline()
@@ -32,7 +36,7 @@ export function createRemoteGame() {
       game.rockets = players.map(({ id, name, team }) => ({ ...(old.get(id) ?? hiddenRocket(id)), name, team }))
       ids = players.map((p) => p.id)
     },
-    snapshot(buffer, now) {
+    snapshot(buffer: ArrayBuffer, now: number) {
       if (!game) throw new Error('Snapshot before any roster message')
       timeline.push(decodeSnapshot(buffer, ids), now)
     },
@@ -40,32 +44,32 @@ export function createRemoteGame() {
       game = null
     },
     // Moves game to how it looked DELAY ago. Returns the events due since the last call.
-    show(now) {
+    show(now: number): GameEvent[] {
       return game ? timeline.show(game, now) : []
     },
   }
 }
 
-function hiddenRocket(id) {
+function hiddenRocket(id: string): Omit<ShownRocket, 'team' | 'name'> {
   return { id, x: 0, y: 0, angle: 0, alive: false, respawnAt: 0, input: NO_INPUT }
 }
 
 function createTimeline() {
-  let snapshots = [] // oldest first
-  let events = [] // [{ time, event }] not yet shown
-  let lags = [] // [{ now, lag }] recent arrivals: local clock minus host clock
-  let offset = null // the one in use
+  let snapshots: Snapshot[] = [] // oldest first
+  let events: { time: number; event: GameEvent }[] = [] // not yet shown
+  let lags: { now: number; lag: number }[] = [] // recent arrivals: local clock minus host clock
+  let offset: number | null = null // the one in use
   let shownAt = 0
   return {
-    push(snapshot, now) {
+    push(snapshot: Snapshot, now: number) {
       // A new match restarts the host's clock.
-      if (snapshot.time < snapshots.at(-1)?.time) [snapshots, events, lags, offset] = [[], [], [], null]
+      if (snapshot.time < (snapshots.at(-1)?.time ?? 0)) [snapshots, events, lags, offset] = [[], [], [], null]
       lags = lags.filter((l) => l.now > now - LAG_WINDOW)
       lags.push({ now, lag: now - snapshot.time })
       snapshots.push(snapshot)
       for (const event of snapshot.events) events.push({ time: snapshot.time, event })
     },
-    show(game, now) {
+    show(game: GameView, now: number): GameEvent[] {
       if (!snapshots.length) return []
       const target = Math.min(...lags.map((l) => l.lag))
       const slew = SLEW * Math.max(0, now - shownAt)
@@ -81,14 +85,15 @@ function createTimeline() {
   }
 }
 
-// Writes game as of host time `at`, between snapshots from and to (to: undefined = none newer yet, hold).
+// Writes game as of host time `at`, between snapshots from and next (next: undefined = none newer yet, hold).
 // Everything discrete (alive, scores, who carries a flag) comes from `from`, so it matches the positions.
-export function blend(game, from, to = from, at) {
+export function blend(game: GameView, from: Snapshot, next: Snapshot | undefined, at: number): void {
+  const to = next ?? from
   const t = to.time > from.time ? Math.min(Math.max((at - from.time) / (to.time - from.time), 0), 1) : 0
   const since = Math.max(0, at - from.time)
   game.time = from.time + since
   game.winner = from.winner
-  for (const [team, state] of Object.entries(from.teams)) Object.assign(game.teams[team], state)
+  for (const [team, state] of teamEntries(from.teams)) Object.assign(game.teams[team], state)
   for (const rocket of game.rockets) blendRocket(rocket, from.rockets, to.rockets, t)
   from.cannons.forEach((c, i) => {
     game.cannons[i].aim = lerpAngle(c.aim, to.cannons[i].aim, t)
@@ -98,7 +103,7 @@ export function blend(game, from, to = from, at) {
   game.bullets = from.bullets.map((b) => ({ ...b, x: b.x + b.vx * since, y: b.y + b.vy * since }))
 }
 
-function blendRocket(rocket, fromRockets, toRockets, t) {
+function blendRocket(rocket: ShownRocket, fromRockets: Snapshot['rockets'], toRockets: Snapshot['rockets'], t: number): void {
   const a = fromRockets.find((r) => r.id === rocket.id)
   if (!a) return
   const b = toRockets.find((r) => r.id === rocket.id)
@@ -109,4 +114,4 @@ function blendRocket(rocket, fromRockets, toRockets, t) {
   rocket.angle = lerpAngle(a.angle, b.angle, t)
 }
 
-const lerpAngle = (a, b, t) => a + wrapAngle(b - a) * t
+const lerpAngle = (a: number, b: number, t: number) => a + wrapAngle(b - a) * t

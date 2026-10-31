@@ -1,13 +1,19 @@
+import type { Config } from './config.ts'
+import type { Input } from './sim/rocket.ts'
+
+type Side = keyof Input
+type Pointers = Map<number, Side> // by pointerId
+
 // Local controls → live { left, right }. Keyboard uses config keys; touch/mouse
 // holds the left or right half of the screen. Both at once = both engines.
-export function createLocalInput(surface, keys) {
-  const state = { left: false, right: false }
-  const down = new Set()
-  const pointers = new Map() // pointerId → 'left' | 'right'
+export function createLocalInput(surface: HTMLElement, keys: Config['keys']): Input {
+  const state: Input = { left: false, right: false }
+  const down = new Set<string>()
+  const pointers: Pointers = new Map()
 
   function refresh() {
     const sides = [...pointers.values()]
-    for (const side of ['left', 'right']) state[side] = keys[side].some((k) => down.has(k)) || sides.includes(side)
+    for (const side of ['left', 'right'] as const) state[side] = keys[side].some((k) => down.has(k)) || sides.includes(side)
   }
 
   listenKeys(down, refresh)
@@ -20,7 +26,7 @@ export function createLocalInput(surface, keys) {
   return state
 }
 
-function listenKeys(down, refresh) {
+function listenKeys(down: Set<string>, refresh: () => void) {
   addEventListener('keydown', (e) => {
     down.add(e.code)
     refresh()
@@ -36,9 +42,8 @@ function listenKeys(down, refresh) {
   })
 }
 
-// pointers: pointerId → 'left' | 'right'
-function listenPointers(surface, pointers, refresh) {
-  const sideOf = (e) => (e.clientX < innerWidth / 2 ? 'left' : 'right')
+function listenPointers(surface: HTMLElement, pointers: Pointers, refresh: () => void) {
+  const sideOf = (e: PointerEvent): Side => (e.clientX < innerWidth / 2 ? 'left' : 'right')
   surface.addEventListener('pointerdown', (e) => {
     surface.setPointerCapture(e.pointerId)
     pointers.set(e.pointerId, sideOf(e))
@@ -49,7 +54,7 @@ function listenPointers(surface, pointers, refresh) {
     pointers.set(e.pointerId, sideOf(e))
     refresh()
   })
-  for (const type of ['pointerup', 'pointercancel']) {
+  for (const type of ['pointerup', 'pointercancel'] as const) {
     surface.addEventListener(type, (e) => {
       pointers.delete(e.pointerId)
       refresh()

@@ -1,10 +1,11 @@
 import { COLOR } from '../theme.ts'
 import { TAU, additive, chrome, glowDot, groundShadow, shaded } from '../brush.ts'
+import type { Point } from '../brush.ts'
 
 // Hardware standing around: finned fuel tank, radar mast, parked flying saucer.
 
 // Cream capsule on three struts, chrome bands, orange nose and swept fins.
-export function drawTank(ctx, { x, y }) {
+export function drawTank(ctx: CanvasRenderingContext2D, { x, y }: Point) {
   groundShadow(ctx, x, y, 14)
   ctx.strokeStyle = COLOR.metalDark
   ctx.lineWidth = 2
@@ -45,7 +46,7 @@ export function drawTank(ctx, { x, y }) {
 }
 
 // Lattice mast with a chrome dish that slowly turns; red feed light blinks.
-export function drawRadar(ctx, { x, y }, clock) {
+export function drawRadar(ctx: CanvasRenderingContext2D, { x, y }: Point, clock: number) {
   const top = y - 52
   const turn = 0.3 + 0.7 * Math.abs(Math.cos(clock * 0.7))
   const blink = Math.sin(clock * 4) > 0.3
@@ -86,7 +87,7 @@ export function drawRadar(ctx, { x, y }, clock) {
 }
 
 // Parked saucer: chrome hull on three feet, teal dome, lit portholes along the rim.
-export function drawSaucer(ctx, { x, y }, clock) {
+export function drawSaucer(ctx: CanvasRenderingContext2D, { x, y }: Point, clock: number) {
   const hy = y - 14
   const [light, mid, shadow] = COLOR.gunmetal
   groundShadow(ctx, x, y, 30)

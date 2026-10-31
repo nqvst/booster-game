@@ -1,4 +1,7 @@
+import type { Config } from './config.ts'
+import type { Mode, Team } from './maps/parse.ts'
 import { SKIES } from './art/theme.ts'
+import { context2d, find } from './dom.ts'
 import { fitCanvas } from './art/brush.ts'
 import { drawFlag, drawPad } from './art/scenery.ts'
 import { drawRock } from './art/solids.ts'
@@ -12,38 +15,43 @@ const SKY = SKIES.dusk
 const PICTURE = { w: 220, h: 96 } // world units shown in a mode card
 const GROUND_Y = 76
 
-// handlers: { onPick(mode, name), onJoin(name) }. joinCode set → only Join is offered.
-export function showMenu(panel, { joinCode, rules, handlers }) {
-  const nameInput = panel.querySelector('#player-name')
+type MenuOptions = {
+  joinCode: string // set → only Join is offered
+  rules: Config['rules']
+  handlers: { onPick(mode: Mode, name: string): void; onJoin(name: string): void }
+}
+
+export function showMenu(panel: HTMLElement, { joinCode, rules, handlers }: MenuOptions): void {
+  const nameInput = find<HTMLInputElement>(panel, '#player-name')
   nameInput.value = loadName()
   const name = () => {
     saveName(nameInput.value)
     return nameInput.value
   }
-  panel.querySelector('.menu-modes').hidden = Boolean(joinCode)
-  panel.querySelector('.menu-pve-rules').textContent =
+  find<HTMLElement>(panel, '.menu-modes').hidden = Boolean(joinCode)
+  find(panel, '.menu-pve-rules').textContent =
     `Co-op vs the computer. Steal its flag ${rules.capturesToWin}× before its turrets shoot you down ${rules.cpuKillsToWin}×.`
-  const joinButton = panel.querySelector('.menu-join')
+  const joinButton = find<HTMLElement>(panel, '.menu-join')
   joinButton.hidden = !joinCode
   joinButton.textContent = `Join room ${joinCode}`
   joinButton.onclick = () => handlers.onJoin(name())
-  for (const card of panel.querySelectorAll('[data-mode]')) card.onclick = () => handlers.onPick(card.dataset.mode, name())
+  for (const card of panel.querySelectorAll<HTMLElement>('[data-mode]')) card.onclick = () => handlers.onPick(card.dataset.mode as Mode, name())
   panel.hidden = false
   animatePictures(panel)
 }
 
-function animatePictures(panel) {
-  const pictures = [...panel.querySelectorAll('[data-mode] canvas')]
+function animatePictures(panel: HTMLElement) {
+  const pictures = [...panel.querySelectorAll<HTMLCanvasElement>('[data-mode] canvas')]
   requestAnimationFrame(function frame(now) {
     if (panel.hidden) return
-    for (const canvas of pictures) drawPicture(canvas, canvas.closest('[data-mode]').dataset.mode, now / 1000)
+    for (const canvas of pictures) drawPicture(canvas, canvas.closest<HTMLElement>('[data-mode]')?.dataset.mode, now / 1000)
     requestAnimationFrame(frame)
   })
 }
 
 // PvE: the computer's flag and a turret. PvP: a flag on each side.
-function drawPicture(canvas, mode, clock) {
-  const ctx = canvas.getContext('2d')
+function drawPicture(canvas: HTMLCanvasElement, mode: string | undefined, clock: number) {
+  const ctx = context2d(canvas)
   const { w, h } = fitCanvas(canvas)
   const scale = Math.min(w / PICTURE.w, h / PICTURE.h)
   ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -63,14 +71,14 @@ function drawPicture(canvas, mode, clock) {
   drawCannon(ctx, { x: 165, y: GROUND_Y, team: 'red', aim }, clock % 1.6 < 0.08, clock)
 }
 
-function drawBase(ctx, x, team, clock) {
+function drawBase(ctx: CanvasRenderingContext2D, x: number, team: Team, clock: number) {
   const pad = { x, y: GROUND_Y - 14, w: 90, h: 14 }
   drawPad(ctx, pad, team, clock)
   drawFlag(ctx, { x: x + pad.w / 2, y: pad.y }, team, clock)
 }
 
 // Remembering the name is a convenience: storage can be blocked (private mode), the game works without it.
-export function loadName() {
+export function loadName(): string {
   try {
     return localStorage.getItem(NAME_KEY) ?? ''
   } catch (err) {
@@ -79,7 +87,7 @@ export function loadName() {
   }
 }
 
-function saveName(name) {
+function saveName(name: string) {
   try {
     localStorage.setItem(NAME_KEY, name)
   } catch (err) {
