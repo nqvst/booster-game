@@ -13,6 +13,10 @@ import type { Biome, GameMap, Rect, Team } from '../maps/parse.ts'
 // Parallax k: 0 = pinned to the screen, 1 = moves with the world.
 const SKY_LAYER = 0.1 // stars, suns
 const CLOUD_LAYER = 0.15 // clouds, passing ships
+const PIN_RADIUS = 26 // objective pointer's circle, outer edge
+const PIN_BORDER = 3 // outer white
+const PIN_FRAME = 5 // black ring inside it
+const PIN_POINT = 1.73 // the tip's distance from the center, in radii
 
 type Weather = { time: Time; rain: boolean }
 export type Scenery = ReturnType<typeof createScenery>
@@ -263,15 +267,50 @@ export function drawFlag(ctx: CanvasRenderingContext2D, foot: Point, team: Team,
   const { x, y } = foot
   const { accent } = TEAM[team]
   const top = y - FLAG_HEIGHT
-  const wave = (t: number) => Math.sin(clock * 6 - t * 5) * 2 * t
 
   ctx.fillStyle = COLOR.cream
   ctx.fillRect(x - 1, top, 2, FLAG_HEIGHT)
-  ctx.fillStyle = accent
-  ctx.beginPath()
-  ctx.moveTo(x + 1, top)
-  for (let i = 1; i <= 8; i++) ctx.lineTo(x + 1 + (i / 8) * 22, top + (i / 8) * 8 + wave(i / 8))
-  for (let i = 7; i >= 0; i--) ctx.lineTo(x + 1 + (i / 8) * 22, top + 16 - (i / 8) * 8 + wave(i / 8))
-  ctx.fill()
+  drawFlagCloth(ctx, { x: x + 1, y: top }, accent, clock)
   additive(ctx, () => glowDot(ctx, x, top, { radius: 8, color: accent, alpha: 0.5 + 0.5 * Math.sin(clock * 5) }))
+}
+
+// The waving part. at: where it meets the top of the pole.
+function drawFlagCloth(ctx: CanvasRenderingContext2D, at: Point, color: string, clock: number) {
+  const wave = (t: number) => Math.sin(clock * 6 - t * 5) * 2 * t
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(at.x, at.y)
+  for (let i = 1; i <= 8; i++) ctx.lineTo(at.x + (i / 8) * 22, at.y + (i / 8) * 8 + wave(i / 8))
+  for (let i = 7; i >= 0; i--) ctx.lineTo(at.x + (i / 8) * 22, at.y + 16 - (i / 8) * 8 + wave(i / 8))
+  ctx.fill()
+}
+
+// HUD pointer: a flag in a white circle, framed in black, the frame drawing out into a point. Around it all, a
+// white border. x, y: circle center. angle: where the point aims. The flag stays upright.
+export function drawFlagPin(ctx: CanvasRenderingContext2D, pin: Point & { angle: number }, team: Team, clock: number) {
+  ctx.save()
+  ctx.translate(pin.x, pin.y)
+  fillPinShape(ctx, PIN_RADIUS, pin.angle, COLOR.pin)
+  fillPinShape(ctx, PIN_RADIUS - PIN_BORDER, pin.angle, COLOR.pinFrame)
+  ctx.fillStyle = COLOR.pin
+  ctx.beginPath()
+  ctx.arc(0, 0, PIN_RADIUS - PIN_BORDER - PIN_FRAME, 0, TAU)
+  ctx.fill()
+  ctx.scale(0.7, 0.7)
+  const top = -FLAG_HEIGHT / 2
+  ctx.fillStyle = COLOR.pinFrame
+  ctx.fillRect(-12, top, 2, FLAG_HEIGHT)
+  drawFlagCloth(ctx, { x: -10, y: top }, TEAM[team].accent, clock)
+  ctx.restore()
+}
+
+// A circle at the origin with straight edges tangent to it, so the point grows out of it with no corner. Every
+// size has the same proportions, which keeps a smaller one an even distance inside a bigger one all the way round.
+function fillPinShape(ctx: CanvasRenderingContext2D, radius: number, angle: number, color: string) {
+  const shoulder = Math.acos(1 / PIN_POINT)
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.arc(0, 0, radius, angle + shoulder, angle - shoulder)
+  ctx.lineTo(Math.cos(angle) * radius * PIN_POINT, Math.sin(angle) * radius * PIN_POINT)
+  ctx.fill()
 }

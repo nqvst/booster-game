@@ -1,7 +1,7 @@
 import { config } from '../config.ts'
 import { DEFAULT_MAP, maps } from '../maps/index.ts'
 import { BIOMES, COLOR, FONT, SKIES } from './theme.ts'
-import { createScenery, drawFlag, drawPad, randomWeather } from './scenery.ts'
+import { createScenery, drawFlag, drawFlagPin, drawPad, randomWeather } from './scenery.ts'
 import { drawRock, drawSolid } from './solids.ts'
 import { drawProp } from './props/index.ts'
 import { drawCannon, drawLaser, drawRocket } from './sprites.ts'
@@ -54,6 +54,7 @@ const cells: Cell[] = [
     drawFlag(ctx, { x: x - 20, y: y + 25 }, 'blue', t)
     drawFlag(ctx, { x: x + 10, y: y + 25 }, 'red', t)
   }],
+  ['objective pin', (ctx, { x, y, t }) => drawFlagPin(ctx, { x, y, angle: t }, 'red', t)],
   ['pad + rock', (ctx, { x, y, t }) => {
     drawRock(ctx, { x: x - 45, y: y + 20, w: 90, h: 25 }, scenery.sky, canyon.biome)
     drawPad(ctx, { x: x - 35, y, w: 70, h: 20 }, 'blue', t)

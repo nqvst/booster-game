@@ -42,6 +42,10 @@ export const COLOR = {
   flame: ['rgba(255,255,235,1)', 'rgba(255,160,60,0.9)', 'rgba(255,60,20,0)'], // nozzle → tip
 
   void: '#120c0c', // outside the map
+  minimapBack: 'rgba(10,14,30,0.6)',
+  minimapSolid: 'rgba(255,243,220,0.55)',
+  pin: '#ffffff', // objective pointer
+  pinFrame: '#000000',
   star: '#fff6e0',
   beacon: '#ff4a3a',
   shipLight: '#fff2d0',
