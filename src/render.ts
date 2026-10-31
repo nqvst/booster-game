@@ -68,7 +68,12 @@ export function createRenderer(canvas: HTMLCanvasElement, config: Config) {
     const me = game.rockets.find((r) => r.id === localId)
     if (!me) return // Joining: no rocket until the host's first snapshot.
 
-    const layout = { ctx, game, me, config, scenery, dt, dpr, w, h, cw: w / dpr, ch: h / dpr, scale: Math.max(w, h) / config.view.size }
+    const layout = {
+      ctx, game, me, config, scenery, dt, dpr, w, h,
+      cw: w / dpr,
+      ch: h / dpr,
+      scale: Math.max(w, h) / config.view.size,
+    }
     const frame = { ...layout, cam: followCamera(view, layout) }
     drawWorld(frame, view)
     drawHud(frame, view)
@@ -112,9 +117,13 @@ function drawWorld({ ctx, game, me, config, scenery, dt, w, h, scale, cam }: Fra
   for (const [team, base] of teamEntries(map.bases)) drawPad(ctx, base.pad, team, clock)
   for (const p of map.props) drawProp(ctx, p, clock)
   drawFlags(ctx, game, clock)
-  for (const c of game.cannons) drawCannon(ctx, c, c.cooldown > config.cannon.fireInterval - MUZZLE_FLASH_SECONDS, clock)
+  for (const c of game.cannons) {
+    drawCannon(ctx, c, c.cooldown > config.cannon.fireInterval - MUZZLE_FLASH_SECONDS, clock)
+  }
   for (const b of game.bullets) drawLaser(ctx, b)
-  for (const r of game.rockets) if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset, r === me)
+  for (const r of game.rockets) {
+    if (r.alive) drawRocket(ctx, r, config.rocket.engineOffset, r === me)
+  }
   effects.draw(ctx, dt)
   scenery.water(ctx, cam.x, clock) // last: reflects everything above it
   ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -239,6 +248,6 @@ function drawMessage({ ctx, me, cw, ch }: Frame, message: string) {
   ctx.shadowBlur = 0
 }
 
-function clamp(v: number, lo: number, hi: number) {
-  return Math.min(Math.max(v, lo), hi)
+function clamp(value: number, lo: number, hi: number) {
+  return Math.min(Math.max(value, lo), hi)
 }

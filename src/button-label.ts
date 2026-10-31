@@ -1,7 +1,11 @@
 // Button text that says what just happened, then goes back to the button's own label.
 const FLASH_SECONDS = 2
 const labelTimers = new WeakMap<HTMLButtonElement, ReturnType<typeof setTimeout>>()
-export function relabel(button: HTMLButtonElement, text: string, { busy = false, ok }: { busy?: boolean; ok?: boolean } = {}) {
+export function relabel(
+  button: HTMLButtonElement,
+  text: string,
+  { busy = false, ok }: { busy?: boolean; ok?: boolean } = {},
+) {
   button.dataset.label ??= button.textContent
   clearTimeout(labelTimers.get(button))
   button.textContent = text

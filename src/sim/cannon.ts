@@ -11,8 +11,8 @@ export const BARREL_LENGTH = 20
 export const PIVOT_HEIGHT = 14
 
 // Cannon x,y is the surface point it stands on.
-export function cannonPedestal(c: Pick<CannonSpot, 'x' | 'y'>): Rect {
-  return { x: c.x - 14, y: c.y - 12, w: 28, h: 12 }
+export function cannonPedestal(cannon: Pick<CannonSpot, 'x' | 'y'>): Rect {
+  return { x: cannon.x - 14, y: cannon.y - 12, w: 28, h: 12 }
 }
 
 export function stepCannons(game: Game, config: Config, dt: number): void {

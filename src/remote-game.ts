@@ -103,15 +103,15 @@ export function blend(game: GameView, from: Snapshot, next: Snapshot | undefined
   game.bullets = from.bullets.map((b) => ({ ...b, x: b.x + b.vx * since, y: b.y + b.vy * since }))
 }
 
-function blendRocket(rocket: ShownRocket, fromRockets: Snapshot['rockets'], toRockets: Snapshot['rockets'], t: number): void {
+function blendRocket(rocket: ShownRocket, fromRockets: Snapshot['rockets'], toRockets: Snapshot['rockets'], fraction: number): void {
   const a = fromRockets.find((r) => r.id === rocket.id)
   if (!a) return
   const b = toRockets.find((r) => r.id === rocket.id)
   Object.assign(rocket, a)
   if (!a.alive || !b?.alive) return // dying or respawning: no sliding across the map
-  rocket.x = a.x + (b.x - a.x) * t
-  rocket.y = a.y + (b.y - a.y) * t
-  rocket.angle = lerpAngle(a.angle, b.angle, t)
+  rocket.x = a.x + (b.x - a.x) * fraction
+  rocket.y = a.y + (b.y - a.y) * fraction
+  rocket.angle = lerpAngle(a.angle, b.angle, fraction)
 }
 
 const lerpAngle = (a: number, b: number, t: number) => a + wrapAngle(b - a) * t

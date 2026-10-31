@@ -37,7 +37,9 @@ const RIGHT = 4
 
 export function encodeSnapshot(game: Game, events: GameEvent[]): ArrayBuffer {
   const { rockets, cannons, bullets } = game
-  const out = writer(HEADER + rockets.length * ROCKET + cannons.length * CANNON + bullets.length * BULLET + events.length * EVENT)
+  const out = writer(
+    HEADER + rockets.length * ROCKET + cannons.length * CANNON + bullets.length * BULLET + events.length * EVENT,
+  )
   out.d(game.time)
   out.b(game.winner ? TEAMS.indexOf(game.winner) + 1 : 0)
   for (const team of TEAMS) {
@@ -60,9 +62,9 @@ export function encodeSnapshot(game: Game, events: GameEvent[]): ArrayBuffer {
   return out.done()
 }
 
-function writeRocket(out: Writer, r: Rocket): void {
-  out.f(r.x, r.y, r.angle, r.respawnAt)
-  out.b((r.alive ? ALIVE : 0) | (r.input.left ? LEFT : 0) | (r.input.right ? RIGHT : 0))
+function writeRocket(out: Writer, rocket: Rocket): void {
+  out.f(rocket.x, rocket.y, rocket.angle, rocket.respawnAt)
+  out.b((rocket.alive ? ALIVE : 0) | (rocket.input.left ? LEFT : 0) | (rocket.input.right ? RIGHT : 0))
 }
 
 // ids: rocket ids in roster order.
@@ -77,7 +79,11 @@ export function decodeSnapshot(buffer: ArrayBuffer, ids: string[]): Snapshot {
   const rockets = ids.map((id) => {
     const [x, y, angle, respawnAt] = [at.f(), at.f(), at.f(), at.f()]
     const flags = at.b()
-    return { id, x, y, angle, respawnAt, alive: Boolean(flags & ALIVE), input: { left: Boolean(flags & LEFT), right: Boolean(flags & RIGHT) } }
+    return {
+      id, x, y, angle, respawnAt,
+      alive: Boolean(flags & ALIVE),
+      input: { left: Boolean(flags & LEFT), right: Boolean(flags & RIGHT) },
+    }
   })
   const cannons = times(cannonCount, () => ({ aim: at.f(), cooldown: at.f() }))
   const bullets = times(bulletCount, () => ({ x: at.f(), y: at.f(), vx: at.f(), vy: at.f(), team: TEAMS[at.b()] }))

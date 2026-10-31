@@ -55,7 +55,10 @@ function teamColumn(team: Team, players: RoomPlayer[], { localId, actions }: Omi
   return section
 }
 
-function playerRow(player: RoomPlayer, { you, actions, otherFull }: { you: boolean; actions: LobbyActions | null; otherFull: boolean }) {
+function playerRow(
+  player: RoomPlayer,
+  { you, actions, otherFull }: { you: boolean; actions: LobbyActions | null; otherFull: boolean },
+) {
   const row = document.createElement('li')
   row.append(player.name + (you ? ' (you)' : ''))
   if (!actions) return row

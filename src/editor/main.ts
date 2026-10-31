@@ -33,7 +33,8 @@ const ui = {
   status: byId<HTMLParagraphElement>('status'),
 }
 
-ui.biome.replaceChildren(...Object.entries(BIOMES).map(([name, b]) => new Option(b.label, name))) // before the first load sets it
+// Before the first load sets it.
+ui.biome.replaceChildren(...Object.entries(BIOMES).map(([name, b]) => new Option(b.label, name)))
 
 let maps: Record<string, GameMap> = {} // name → map as last saved
 let paletteBiome: Biome | null = null // biome the tool tiles were drawn for
@@ -136,7 +137,7 @@ function onPlainKey(e: KeyboardEvent): void {
   if (tool) setTool(tool)
   if (e.code === 'KeyF') edit(() => flipSelected(editor))
   if (e.code === 'Delete' || e.code === 'Backspace') edit(() => removeSelected(editor))
-  if (e.code === 'Escape') edit(() => (editor.selected = null))
+  if (e.code === 'Escape') edit(() => { editor.selected = null })
 }
 
 function edit(change: () => void): void {

@@ -41,7 +41,8 @@ let players: RoomPlayer[] = [] // host: everyone in the room. PvE: all blue
 let localId = LOCAL_ID
 let room: Room | null = null // set while hosting
 let client: RoomClient | null = null // set while joined
-let remote: ReturnType<typeof createRemoteGame> | null = null // set while joined: the host's game as this browser shows it
+// Set while joined: the host's game as this browser shows it.
+let remote: ReturnType<typeof createRemoteGame> | null = null
 let rosterKey: string | null = null // host: what joiners were last told about who's in the match
 const remoteInputs: Record<string, Input> = {}
 let pending = 0

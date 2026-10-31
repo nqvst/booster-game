@@ -93,7 +93,9 @@ export async function hostRoom(handlers: HostHandlers): Promise<Room> {
     peer.on('open', () => {
       opened = true
       setInterval(() => {
-        for (const [conn, seen] of players) if (Date.now() - seen > TIMEOUT_MS) dropPlayer(players, conn, handlers)
+        for (const [conn, seen] of players) {
+          if (Date.now() - seen > TIMEOUT_MS) dropPlayer(players, conn, handlers)
+        }
       }, 1000)
       resolve({
         code,
@@ -118,7 +120,8 @@ function acceptPlayer(players: Players, conn: DataConnection, handlers: HostHand
     else players.set(conn, Date.now())
   })
   conn.on('data', (msg) => {
-    if (!players.has(conn) || !(msg instanceof ArrayBuffer) || msg.byteLength !== 1) return // not a player, or not input
+    // Not a player, or not input.
+    if (!players.has(conn) || !(msg instanceof ArrayBuffer) || msg.byteLength !== 1) return
     players.set(conn, Date.now())
     const bits = new Uint8Array(msg)[0]
     handlers.onInput(conn.peer, { left: (bits & 1) !== 0, right: (bits & 2) !== 0 })

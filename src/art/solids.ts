@@ -35,120 +35,126 @@ const COURSE = 36 // temple stone: row height
 const STONE_WIDTHS = [72, 48, 96, 60] // cut stones, cycling; each row starts further along
 
 // Water is skipped: the sea is drawn last by createScenery().water(), over everything it reflects.
-export function drawSolid(ctx: CanvasRenderingContext2D, s: Solid, sky: Sky, biome: Biome) {
-  if (s.kind === 'water') return
-  const draw = SOLID_ART[s.kind ?? 'rock']
-  if (!draw) throw new Error(`drawSolid: unknown solid kind "${s.kind}"`)
-  draw(ctx, s, sky, biome)
+export function drawSolid(ctx: CanvasRenderingContext2D, solid: Solid, sky: Sky, biome: Biome) {
+  if (solid.kind === 'water') return
+  const draw = SOLID_ART[solid.kind ?? 'rock']
+  if (!draw) throw new Error(`drawSolid: unknown solid kind "${solid.kind}"`)
+  draw(ctx, solid, sky, biome)
 }
 
-export function drawRock(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky, biome: Biome) {
+export function drawRock(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky, biome: Biome) {
   const draw = GROUND_ART[biome]
   if (!draw) throw new Error(`drawRock: unknown biome "${biome}", expected one of ${Object.keys(GROUND_ART)}`)
-  draw(ctx, s, sky.ground[biome])
+  draw(ctx, solid, sky.ground[biome])
 }
 
 // Horizontal boards with nails at the ends; tiki bar or harbour pier.
-function drawPlanks(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
+function drawPlanks(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
   const [light, mid, dark] = sky.wood
-  clipped(ctx, s, () => {
-    for (let i = 0, y = s.y; y < s.y + s.h; i++, y += BOARD) {
+  clipped(ctx, solid, () => {
+    for (let i = 0, y = solid.y; y < solid.y + solid.h; i++, y += BOARD) {
       const g = ctx.createLinearGradient(0, y, 0, y + BOARD)
       g.addColorStop(0, light)
       g.addColorStop(0.4, mid)
       g.addColorStop(1, dark)
       ctx.fillStyle = g
-      ctx.fillRect(s.x, y, s.w, BOARD)
+      ctx.fillRect(solid.x, y, solid.w, BOARD)
       ctx.fillStyle = COLOR.seam
-      ctx.fillRect(s.x, y + BOARD - 1, s.w, 1)
-      const grain = s.x + 20 + ((i * 47) % Math.max(1, s.w - 40))
-      ctx.fillRect(grain, y + 3, Math.min(30, s.x + s.w - grain), 1)
+      ctx.fillRect(solid.x, y + BOARD - 1, solid.w, 1)
+      const grain = solid.x + 20 + ((i * 47) % Math.max(1, solid.w - 40))
+      ctx.fillRect(grain, y + 3, Math.min(30, solid.x + solid.w - grain), 1)
     }
-    rivets(ctx, s.y + BOARD / 2, { x0: s.x + 5, x1: s.x + s.w, step: Math.max(10, s.w - 10) })
-    rivets(ctx, s.y + s.h - BOARD / 2, { x0: s.x + 5, x1: s.x + s.w, step: Math.max(10, s.w - 10) })
+    rivets(ctx, solid.y + BOARD / 2, { x0: solid.x + 5, x1: solid.x + solid.w, step: Math.max(10, solid.w - 10) })
+    rivets(ctx, solid.y + solid.h - BOARD / 2, {
+      x0: solid.x + 5,
+      x1: solid.x + solid.w,
+      step: Math.max(10, solid.w - 10),
+    })
   })
-  edges(ctx, s, COLOR.lip)
+  edges(ctx, solid, COLOR.lip)
 }
 
 // Big riveted hull plates with rust streaking down from the rivets.
-function drawHull(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
+function drawHull(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
   const [light, mid, shadow] = sky.metal
-  vertical(ctx, s, [light, mid, shadow], s.h / 2)
-  clipped(ctx, s, () => {
-    for (let row = 0, y = s.y; y < s.y + s.h; row++, y += HULL_PLATE.h) {
-      if (row) seam(ctx, { x: s.x, y, w: s.w, h: 2 })
+  vertical(ctx, solid, [light, mid, shadow], solid.h / 2)
+  clipped(ctx, solid, () => {
+    for (let row = 0, y = solid.y; y < solid.y + solid.h; row++, y += HULL_PLATE.h) {
+      if (row) seam(ctx, { x: solid.x, y, w: solid.w, h: 2 })
       const offset = row % 2 ? HULL_PLATE.w / 2 : 0
-      for (let x = s.x + offset; x < s.x + s.w; x += HULL_PLATE.w) {
-        if (x > s.x) seam(ctx, { x, y, w: 2, h: HULL_PLATE.h })
+      for (let x = solid.x + offset; x < solid.x + solid.w; x += HULL_PLATE.w) {
+        if (x > solid.x) seam(ctx, { x, y, w: 2, h: HULL_PLATE.h })
         ctx.fillStyle = COLOR.rust
         ctx.fillRect(x + 6, y + 8, 2, 10 + ((x * 3) % 14))
       }
-      rivets(ctx, y + 6, { x0: s.x + 8, x1: s.x + s.w, step: 16 })
+      rivets(ctx, y + 6, { x0: solid.x + 8, x1: solid.x + solid.w, step: 16 })
     }
   })
-  edges(ctx, s, light)
+  edges(ctx, solid, light)
 }
 
-function drawConcrete(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
-  vertical(ctx, s, sky.concrete, 30)
-  clipped(ctx, s, () => {
-    for (let row = 0, y = s.y; y < s.y + s.h; row++, y += BLOCK.h) {
-      if (row) seam(ctx, { x: s.x, y, w: s.w, h: 2 })
-      for (let x = s.x + (row % 2 ? BLOCK.w / 2 : BLOCK.w); x < s.x + s.w; x += BLOCK.w) seam(ctx, { x, y, w: 2, h: BLOCK.h })
+function drawConcrete(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
+  vertical(ctx, solid, sky.concrete, 30)
+  clipped(ctx, solid, () => {
+    for (let row = 0, y = solid.y; y < solid.y + solid.h; row++, y += BLOCK.h) {
+      if (row) seam(ctx, { x: solid.x, y, w: solid.w, h: 2 })
+      for (let x = solid.x + (row % 2 ? BLOCK.w / 2 : BLOCK.w); x < solid.x + solid.w; x += BLOCK.w) {
+        seam(ctx, { x, y, w: 2, h: BLOCK.h })
+      }
     }
   })
-  edges(ctx, s, COLOR.lip)
+  edges(ctx, solid, COLOR.lip)
 }
 
-function drawMetal(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
+function drawMetal(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
   const [light, mid, shadow] = sky.metal
-  clipped(ctx, s, () => {
-    for (let y = s.y; y < s.y + s.h; y += PLATE.h) {
+  clipped(ctx, solid, () => {
+    for (let y = solid.y; y < solid.y + solid.h; y += PLATE.h) {
       const g = ctx.createLinearGradient(0, y, 0, y + PLATE.h)
       g.addColorStop(0, light)
       g.addColorStop(0.35, mid)
       g.addColorStop(1, shadow)
       ctx.fillStyle = g
-      ctx.fillRect(s.x, y, s.w, PLATE.h)
-      if (y > s.y) {
-        seam(ctx, { x: s.x, y, w: s.w, h: 2 })
-        rivets(ctx, y + 7, { x0: s.x + PLATE.rivet / 2, x1: s.x + s.w, step: PLATE.rivet })
+      ctx.fillRect(solid.x, y, solid.w, PLATE.h)
+      if (y > solid.y) {
+        seam(ctx, { x: solid.x, y, w: solid.w, h: 2 })
+        rivets(ctx, y + 7, { x0: solid.x + PLATE.rivet / 2, x1: solid.x + solid.w, step: PLATE.rivet })
       }
     }
   })
-  edges(ctx, s, light)
+  edges(ctx, solid, light)
 }
 
 // Mustard with dark diagonal stripes: mark edges that bite.
-function drawHazard(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
+function drawHazard(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
   ctx.fillStyle = COLOR.hazard
-  ctx.fillRect(s.x, s.y, s.w, s.h)
-  clipped(ctx, s, () => {
+  ctx.fillRect(solid.x, solid.y, solid.w, solid.h)
+  clipped(ctx, solid, () => {
     ctx.fillStyle = sky.metal[2]
-    for (let x = s.x - s.h; x < s.x + s.w; x += STRIPE * 2) {
+    for (let x = solid.x - solid.h; x < solid.x + solid.w; x += STRIPE * 2) {
       ctx.beginPath()
-      ctx.moveTo(x, s.y + s.h)
-      ctx.lineTo(x + STRIPE, s.y + s.h)
-      ctx.lineTo(x + STRIPE + s.h, s.y)
-      ctx.lineTo(x + s.h, s.y)
+      ctx.moveTo(x, solid.y + solid.h)
+      ctx.lineTo(x + STRIPE, solid.y + solid.h)
+      ctx.lineTo(x + STRIPE + solid.h, solid.y)
+      ctx.lineTo(x + solid.h, solid.y)
       ctx.fill()
     }
   })
-  const shade = ctx.createLinearGradient(0, s.y, 0, s.y + s.h)
+  const shade = ctx.createLinearGradient(0, solid.y, 0, solid.y + solid.h)
   shade.addColorStop(0, 'rgba(255,255,255,0.15)')
   shade.addColorStop(1, 'rgba(0,0,0,0.3)')
   ctx.fillStyle = shade
-  ctx.fillRect(s.x, s.y, s.w, s.h)
-  edges(ctx, s, COLOR.lip)
+  ctx.fillRect(solid.x, solid.y, solid.w, solid.h)
+  edges(ctx, solid, COLOR.lip)
 }
 
 // Cream wall panels with corner rivets and an orange trim band every few rows.
-function drawPanel(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
+function drawPanel(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
   const [light, base, shade] = sky.panel
-  vertical(ctx, s, [light, base, shade], s.h / 2)
-  clipped(ctx, s, () => {
-    for (let row = 0, y = s.y; y < s.y + s.h; row++, y += PANEL) {
-      for (let x = s.x; x < s.x + s.w; x += PANEL) {
+  vertical(ctx, solid, [light, base, shade], solid.h / 2)
+  clipped(ctx, solid, () => {
+    for (let row = 0, y = solid.y; y < solid.y + solid.h; row++, y += PANEL) {
+      for (let x = solid.x; x < solid.x + solid.w; x += PANEL) {
         ctx.fillStyle = shade
         ctx.fillRect(x + PANEL - 1, y, 1, PANEL)
         ctx.fillRect(x, y + PANEL - 1, PANEL, 1)
@@ -156,30 +162,30 @@ function drawPanel(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
         ctx.fillRect(x, y, PANEL, 1)
         ctx.fillRect(x, y, 1, PANEL)
       }
-      rivets(ctx, y + 5, { x0: s.x + 5, x1: s.x + s.w, step: PANEL })
-      rivets(ctx, y + PANEL - 6, { x0: s.x + 5, x1: s.x + s.w, step: PANEL })
+      rivets(ctx, y + 5, { x0: solid.x + 5, x1: solid.x + solid.w, step: PANEL })
+      rivets(ctx, y + PANEL - 6, { x0: solid.x + 5, x1: solid.x + solid.w, step: PANEL })
       if (row % TRIM_EVERY_ROWS === TRIM_EVERY_ROWS - 1) {
         ctx.fillStyle = COLOR.trim
-        ctx.fillRect(s.x, y + PANEL - 8, s.w, 6)
+        ctx.fillRect(solid.x, y + PANEL - 8, solid.w, 6)
       }
     }
   })
-  edges(ctx, s, COLOR.lip)
+  edges(ctx, solid, COLOR.lip)
 }
 
 // Glass blocks in a gunmetal frame, stretched a little so only whole panes fit; some light up after dark.
-function drawGlass(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
+function drawGlass(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
   const [top, bottom] = sky.glass
-  const cols = Math.max(1, Math.round(s.w / PANE))
-  const rows = Math.max(1, Math.round(s.h / PANE))
-  const pw = s.w / cols
-  const ph = s.h / rows
+  const cols = Math.max(1, Math.round(solid.w / PANE))
+  const rows = Math.max(1, Math.round(solid.h / PANE))
+  const pw = solid.w / cols
+  const ph = solid.h / rows
   ctx.fillStyle = sky.metal[1]
-  ctx.fillRect(s.x, s.y, s.w, s.h)
+  ctx.fillRect(solid.x, solid.y, solid.w, solid.h)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const x = s.x + col * pw
-      const y = s.y + row * ph
+      const x = solid.x + col * pw
+      const y = solid.y + row * ph
       const g = ctx.createLinearGradient(0, y, 0, y + ph)
       g.addColorStop(0, top)
       g.addColorStop(1, bottom)
@@ -196,28 +202,28 @@ function drawGlass(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
       ctx.fillRect(x + 5, y + 5, 2, Math.max(0, ph - 14))
     }
   }
-  edges(ctx, s, sky.metal[0])
+  edges(ctx, solid, sky.metal[0])
 }
 
 // Ancient temple wall: big cut stones, a carved band every third course, moss creeping out of the joints.
-function drawStone(ctx: CanvasRenderingContext2D, s: Rect, sky: Sky) {
-  vertical(ctx, s, sky.stone, 30)
-  clipped(ctx, s, () => {
-    for (let row = 0, y = s.y; y < s.y + s.h; row++, y += COURSE) {
-      if (row) seam(ctx, { x: s.x, y, w: s.w, h: 2 })
-      let x = s.x - ((row * 37) % 60)
-      for (let i = row; x < s.x + s.w; i++) {
+function drawStone(ctx: CanvasRenderingContext2D, solid: Rect, sky: Sky) {
+  vertical(ctx, solid, sky.stone, 30)
+  clipped(ctx, solid, () => {
+    for (let row = 0, y = solid.y; y < solid.y + solid.h; row++, y += COURSE) {
+      if (row) seam(ctx, { x: solid.x, y, w: solid.w, h: 2 })
+      let x = solid.x - ((row * 37) % 60)
+      for (let i = row; x < solid.x + solid.w; i++) {
         const w = STONE_WIDTHS[i % STONE_WIDTHS.length]
-        if (x > s.x) seam(ctx, { x, y, w: 2, h: COURSE })
+        if (x > solid.x) seam(ctx, { x, y, w: 2, h: COURSE })
         if (row % 3 === 1) carving(ctx, { x: x + 2, y: y + 2, w: w - 2, h: COURSE - 2 })
         if ((i * 5 + row * 3) % 4 === 0) moss(ctx, x + 2, y + COURSE)
         x += w
       }
     }
   })
-  edges(ctx, s, COLOR.lip)
+  edges(ctx, solid, COLOR.lip)
   ctx.fillStyle = COLOR.moss
-  for (let x = s.x + 8; x < s.x + s.w - 8; x += 23) ctx.fillRect(x, s.y, 5 + (x % 7), 3 + (x % 3))
+  for (let x = solid.x + 8; x < solid.x + solid.w - 8; x += 23) ctx.fillRect(x, solid.y, 5 + (x % 7), 3 + (x % 3))
 }
 
 // Stepped-fret motif cut into a stone: two nested outlines and a sunken center.
@@ -240,14 +246,14 @@ function moss(ctx: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 // Lit top lip, softly shaded right edge: light comes from the upper left everywhere.
-function edges(ctx: CanvasRenderingContext2D, s: Rect, lip: string) {
-  const shade = ctx.createLinearGradient(s.x + s.w - 6, 0, s.x + s.w, 0)
+function edges(ctx: CanvasRenderingContext2D, solid: Rect, lip: string) {
+  const shade = ctx.createLinearGradient(solid.x + solid.w - 6, 0, solid.x + solid.w, 0)
   shade.addColorStop(0, 'rgba(0,0,0,0)')
   shade.addColorStop(1, COLOR.edgeShade)
   ctx.fillStyle = shade
-  ctx.fillRect(s.x + s.w - 6, s.y, 6, s.h)
+  ctx.fillRect(solid.x + solid.w - 6, solid.y, 6, solid.h)
   ctx.fillStyle = lip
-  ctx.fillRect(s.x, s.y, s.w, 3)
+  ctx.fillRect(solid.x, solid.y, solid.w, 3)
 }
 
 function clipped(ctx: CanvasRenderingContext2D, { x, y, w, h }: Rect, draw: () => void) {

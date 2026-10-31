@@ -9,6 +9,6 @@ export function solidAt(map: GameMap, x: number, y: number): Solid | null {
   return map.solids.find((s) => x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h) ?? null
 }
 
-export function wrapAngle(a: number): number {
-  return Math.atan2(Math.sin(a), Math.cos(a))
+export function wrapAngle(angle: number): number {
+  return Math.atan2(Math.sin(angle), Math.cos(angle))
 }

@@ -22,21 +22,21 @@ export const PROP_ART: Record<PropKind, PropArt> = {
   statue: drawStatue,
 }
 
-export function drawProp(ctx: CanvasRenderingContext2D, p: Prop, clock: number) {
-  const draw = art(p)
-  if (!p.flip) {
-    draw(ctx, p, clock)
+export function drawProp(ctx: CanvasRenderingContext2D, prop: Prop, clock: number) {
+  const draw = art(prop)
+  if (!prop.flip) {
+    draw(ctx, prop, clock)
     return
   }
   ctx.save()
-  ctx.translate(p.x * 2, 0)
+  ctx.translate(prop.x * 2, 0)
   ctx.scale(-1, 1)
-  draw(ctx, p, clock)
+  draw(ctx, prop, clock)
   ctx.restore()
 }
 
-function art(p: Prop) {
-  const a = PROP_ART[p.kind]
-  if (!a) throw new Error(`Unknown prop kind "${p.kind}", expected one of ${Object.keys(PROP_ART)}`)
+function art(prop: Prop) {
+  const a = PROP_ART[prop.kind]
+  if (!a) throw new Error(`Unknown prop kind "${prop.kind}", expected one of ${Object.keys(PROP_ART)}`)
   return a
 }

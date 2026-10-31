@@ -85,7 +85,12 @@ function layoutScene(map: GameMap, sky: Sky, rain: boolean) {
     })),
     hills: layoutHills(map, sky, map.biome),
     drops: rain
-      ? Array.from({ length: 260 }, (_, i) => ({ x: rand(0, 1), y: rand(0, 1), speed: rand(0.9, 1.4), near: i % 3 === 0 }))
+      ? Array.from({ length: 260 }, (_, i) => ({
+          x: rand(0, 1),
+          y: rand(0, 1),
+          speed: rand(0.9, 1.4),
+          near: i % 3 === 0,
+        }))
       : [],
   }
 }
@@ -131,7 +136,9 @@ function drawStars(ctx: CanvasRenderingContext2D, { stars, sky, map }: Scene, cl
 
 function drawSuns(ctx: CanvasRenderingContext2D, sky: Sky, { width, height }: Pick<GameMap, 'width' | 'height'>) {
   additive(ctx, () => {
-    for (const s of sky.suns) glowDot(ctx, s.x * width, s.y * height, { radius: s.r * 7, color: sky.sunGlow, alpha: sky.glow })
+    for (const s of sky.suns) {
+      glowDot(ctx, s.x * width, s.y * height, { radius: s.r * 7, color: sky.sunGlow, alpha: sky.glow })
+    }
   })
   ctx.fillStyle = sky.sun
   for (const s of sky.suns) {

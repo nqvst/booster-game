@@ -24,7 +24,6 @@ export const BIOMES = {
   nautic: { label: 'Nautic', blocks: ['rock', 'water', 'hull', 'planks', 'metal', 'hazard', 'glass'], hills: 'island', tint: '#9ac0dc', rain: 0.45 },
 } as const satisfies Record<Biome, { label: string; blocks: readonly (SolidKind | 'rock')[]; hills: string; tint: string | null; rain: number }>
 
-type BlockKind = (typeof BIOMES)[Biome]['blocks'][number]
 export type HillShape = (typeof BIOMES)[Biome]['hills']
 
 export const COLOR = {
@@ -166,7 +165,14 @@ export const SKIES = {
     overcast: 'rgba(12,14,24,0.55)',
     rainCloud: ['rgba(20,22,34,0.95)', 'rgba(40,44,62,0.9)'],
   },
-} as const satisfies Record<string, Record<string, unknown> & { ground: Record<Biome, GroundColors>; wood: Palette; stone: Palette; concrete: Palette; metal: Palette; panel: Palette }>
+} as const satisfies Record<string, Record<string, unknown> & {
+  ground: Record<Biome, GroundColors>
+  wood: Palette
+  stone: Palette
+  concrete: Palette
+  metal: Palette
+  panel: Palette
+}>
 
 export type Time = keyof typeof SKIES
 export type Sky = (typeof SKIES)[Time]

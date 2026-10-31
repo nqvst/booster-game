@@ -93,7 +93,9 @@ export function addPlayer(game: Game, { id, team, name = '' }: NewPlayer): void 
 }
 
 export function removePlayer(game: Game, id: string): void {
-  for (const team of Object.values(game.teams)) if (team.flagCarrier === id) team.flagCarrier = null
+  for (const team of Object.values(game.teams)) {
+    if (team.flagCarrier === id) team.flagCarrier = null
+  }
   game.rockets = game.rockets.filter((r) => r.id !== id)
 }
 
@@ -138,7 +140,9 @@ function kill(game: Game, rocket: Rocket, config: Config): void {
   rocket.respawnAt = game.time + config.rules.respawnSeconds
   game.events.push({ type: 'explode', x: rocket.x, y: rocket.y, team: rocket.team })
   // Dropped flag goes straight home.
-  for (const team of Object.values(game.teams)) if (team.flagCarrier === rocket.id) team.flagCarrier = null
+  for (const team of Object.values(game.teams)) {
+    if (team.flagCarrier === rocket.id) team.flagCarrier = null
+  }
 }
 
 function updateFlags(game: Game, config: Config): void {

@@ -4,7 +4,6 @@ import type { Point } from './brush.ts'
 import type { GameEvent } from '../sim/game.ts'
 
 export type Explosion = Omit<Extract<GameEvent, { type: 'explode' }>, 'type'>
-type Effects = ReturnType<typeof createEffects>
 
 type MinMax = [min: number, max: number]
 type Look = { gravity: number; size: number } & ({ kind: 'smoke' | 'flash' } | { kind: 'spark'; color: string })
@@ -20,7 +19,10 @@ export function createEffects() {
     },
 
     draw(ctx: CanvasRenderingContext2D, dt: number) {
-      particles = particles.filter((p) => (p.life -= dt) > 0)
+      particles = particles.filter((p) => {
+        p.life -= dt
+        return p.life > 0
+      })
       for (const p of particles) {
         move(p, dt)
         const t = p.life / p.max // 1 → 0
@@ -48,34 +50,38 @@ function burst({ x, y, team }: Explosion) {
   return [...smoke, flash, ...sparks]
 }
 
-function move(p: Particle, dt: number) {
-  p.vy += p.gravity * dt
-  if (p.kind === 'smoke') p.vx *= 1 - 1.5 * dt
-  p.x += p.vx * dt
-  p.y += p.vy * dt
+function move(moving: Particle, dt: number) {
+  moving.vy += moving.gravity * dt
+  if (moving.kind === 'smoke') moving.vx *= 1 - 1.5 * dt
+  moving.x += moving.vx * dt
+  moving.y += moving.vy * dt
 }
 
 const DRAW = {
-  smoke(ctx: CanvasRenderingContext2D, p: Particle, t: number) {
-    ctx.globalAlpha = t * 0.45
+  smoke(ctx: CanvasRenderingContext2D, puff: Particle, lifeLeft: number) {
+    ctx.globalAlpha = lifeLeft * 0.45
     ctx.fillStyle = COLOR.smoke
     ctx.beginPath()
-    ctx.arc(p.x, p.y, p.size * (2 - t), 0, TAU)
+    ctx.arc(puff.x, puff.y, puff.size * (2 - lifeLeft), 0, TAU)
     ctx.fill()
     ctx.globalAlpha = 1
   },
-  flash(ctx: CanvasRenderingContext2D, p: Particle, t: number) {
-    additive(ctx, () => glowDot(ctx, p.x, p.y, { radius: p.size * (1.6 - t), color: COLOR.spark[0], alpha: t }))
+  flash(ctx: CanvasRenderingContext2D, flash: Particle, lifeLeft: number) {
+    additive(ctx, () => glowDot(ctx, flash.x, flash.y, {
+      radius: flash.size * (1.6 - lifeLeft),
+      color: COLOR.spark[0],
+      alpha: lifeLeft,
+    }))
   },
-  spark(ctx: CanvasRenderingContext2D, p: Extract<Particle, { kind: 'spark' }>, t: number) {
+  spark(ctx: CanvasRenderingContext2D, spark: Extract<Particle, { kind: 'spark' }>, lifeLeft: number) {
     additive(ctx, () => {
-      ctx.globalAlpha = t
-      ctx.strokeStyle = p.color
-      ctx.lineWidth = p.size
+      ctx.globalAlpha = lifeLeft
+      ctx.strokeStyle = spark.color
+      ctx.lineWidth = spark.size
       ctx.lineCap = 'round'
       ctx.beginPath()
-      ctx.moveTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03)
-      ctx.lineTo(p.x, p.y)
+      ctx.moveTo(spark.x - spark.vx * 0.03, spark.y - spark.vy * 0.03)
+      ctx.lineTo(spark.x, spark.y)
       ctx.stroke()
     })
   },

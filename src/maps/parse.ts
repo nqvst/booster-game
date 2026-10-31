@@ -54,59 +54,59 @@ export function parseMap(raw: unknown, label: string): GameMap {
   }
 }
 
-function isObject(v: unknown): v is Record<string, unknown> {
-  return Boolean(v) && typeof v === 'object'
+function isObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object'
 }
 
-// v.key, or undefined when v isn't an object at all.
-function field(v: unknown, key: string): unknown {
-  return isObject(v) ? v[key] : undefined
+// value.key, or undefined when value isn't an object at all.
+function field(value: unknown, key: string): unknown {
+  return isObject(value) ? value[key] : undefined
 }
 
-function solid(s: unknown, path: string): Solid {
-  const r = rect(s, path)
-  if (field(s, 'water') !== undefined) throw new Error(`${path}.water is no longer a field, use "kind": "water"`)
-  const kind = field(s, 'kind')
+function solid(raw: unknown, path: string): Solid {
+  const r = rect(raw, path)
+  if (field(raw, 'water') !== undefined) throw new Error(`${path}.water is no longer a field, use "kind": "water"`)
+  const kind = field(raw, 'kind')
   return kind === undefined ? r : { ...r, kind: oneOf(kind, SOLID_KINDS, `${path}.kind`) }
 }
 
-function pad(p: unknown, path: string): Rect {
-  const r = rect(p, path)
+function pad(raw: unknown, path: string): Rect {
+  const r = rect(raw, path)
   if (r.w < MIN_PAD_WIDTH) throw new Error(`${path}.w must be at least ${MIN_PAD_WIDTH}, got ${r.w}`)
   return r
 }
 
-function cannon(c: unknown, path: string): CannonSpot {
-  return { x: finite(field(c, 'x'), `${path}.x`), y: finite(field(c, 'y'), `${path}.y`), team: oneOf(field(c, 'team'), TEAMS, `${path}.team`) }
+function cannon(raw: unknown, path: string): CannonSpot {
+  return { x: finite(field(raw, 'x'), `${path}.x`), y: finite(field(raw, 'y'), `${path}.y`), team: oneOf(field(raw, 'team'), TEAMS, `${path}.team`) }
 }
 
-function prop(p: unknown, path: string): Prop {
-  const kind = oneOf(field(p, 'kind'), PROP_KINDS, `${path}.kind`)
-  return { kind, x: finite(field(p, 'x'), `${path}.x`), y: finite(field(p, 'y'), `${path}.y`), ...(field(p, 'flip') === true && { flip: true }) }
+function prop(raw: unknown, path: string): Prop {
+  const kind = oneOf(field(raw, 'kind'), PROP_KINDS, `${path}.kind`)
+  return { kind, x: finite(field(raw, 'x'), `${path}.x`), y: finite(field(raw, 'y'), `${path}.y`), ...(field(raw, 'flip') === true && { flip: true }) }
 }
 
-function rect(r: unknown, path: string): Rect {
-  if (!isObject(r)) throw new Error(`${path} must be an object`)
-  return { x: finite(r.x, `${path}.x`), y: finite(r.y, `${path}.y`), w: positive(r.w, `${path}.w`), h: positive(r.h, `${path}.h`) }
+function rect(raw: unknown, path: string): Rect {
+  if (!isObject(raw)) throw new Error(`${path} must be an object`)
+  return { x: finite(raw.x, `${path}.x`), y: finite(raw.y, `${path}.y`), w: positive(raw.w, `${path}.w`), h: positive(raw.h, `${path}.h`) }
 }
 
-function oneOf<T extends string>(v: unknown, options: readonly T[], path: string): T {
-  if (!options.includes(v as T)) throw new Error(`${path} must be one of ${options}, got ${JSON.stringify(v)}`)
-  return v as T
+function oneOf<T extends string>(value: unknown, options: readonly T[], path: string): T {
+  if (!options.includes(value as T)) throw new Error(`${path} must be one of ${options}, got ${JSON.stringify(value)}`)
+  return value as T
 }
 
-function list(v: unknown, path: string): unknown[] {
-  if (!Array.isArray(v)) throw new Error(`${path} must be an array`)
-  return v
+function list(value: unknown, path: string): unknown[] {
+  if (!Array.isArray(value)) throw new Error(`${path} must be an array`)
+  return value
 }
 
-function finite(v: unknown, path: string): number {
-  if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`${path} must be a number, got ${JSON.stringify(v)}`)
-  return v
+function finite(value: unknown, path: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`${path} must be a number, got ${JSON.stringify(value)}`)
+  return value
 }
 
-function positive(v: unknown, path: string): number {
-  const n = finite(v, path)
+function positive(value: unknown, path: string): number {
+  const n = finite(value, path)
   if (!(n > 0)) throw new Error(`${path} must be positive, got ${n}`)
   return n
 }

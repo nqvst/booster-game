@@ -70,7 +70,11 @@ export function drawStarburst(ctx: CanvasRenderingContext2D, { x, y }: Point, cl
   additive(ctx, () => glowDot(ctx, x, cy, { radius: 30, color: COLOR.trim, alpha: 0.5 * pulse }))
 }
 
-function star(ctx: CanvasRenderingContext2D, { x, y, outer, inner }: Point & { outer: number; inner: number }, color: string) {
+function star(
+  ctx: CanvasRenderingContext2D,
+  { x, y, outer, inner }: Point & { outer: number; inner: number },
+  color: string,
+) {
   ctx.fillStyle = color
   ctx.beginPath()
   for (let i = 0; i < 16; i++) {

@@ -48,7 +48,7 @@ function runUntil({ game, config }: Setup, done: () => boolean, seconds: number)
 // Left engine tilts nose right; engines further out spin faster.
 {
   const tilt = (offset: number) => {
-    const t = setup(flat, (c) => (c.rocket.engineOffset = offset))
+    const t = setup(flat, (c) => { c.rocket.engineOffset = offset })
     run(t, 0.3, BOTH)
     run(t, 0.2, LEFT)
     assert(t.r.alive, `rocket crashed during tilt test (offset ${offset})`)
@@ -132,7 +132,7 @@ function runUntil({ game, config }: Setup, done: () => boolean, seconds: number)
 
 // Cannon shoots down a rocket in range. In PvE that scores for the computer; crashes don't.
 {
-  const t = setup({ ...flat, cannons: [{ x: 1000, y: 900, team: 'red' }] }, (c) => (c.cannon.enabled = true))
+  const t = setup({ ...flat, cannons: [{ x: 1000, y: 900, team: 'red' }] }, (c) => { c.cannon.enabled = true })
   Object.assign(t.r, { x: 1400, y: 900 - 18 })
   assert(runUntil(t, () => !t.r.alive, 6), 'cannon should hit rocket in range')
   assert.equal(t.game.teams.red.score, 1, 'PvE: shoot-down scores for the computer')

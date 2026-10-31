@@ -12,7 +12,9 @@ export function createTuningPanel(config: Config): void {
   }
   addCopyButton(panel, config)
 
-  const flip = () => (panel.hidden = !panel.hidden)
+  const flip = () => {
+    panel.hidden = !panel.hidden
+  }
   toggle.onclick = flip
   addEventListener('keydown', (e) => {
     if (e.code === 'Backquote') flip()
@@ -36,7 +38,9 @@ function addField(fieldset: HTMLFieldSetElement, values: Record<string, unknown>
   if (typeof value === 'boolean') {
     input.type = 'checkbox'
     input.checked = value
-    input.onchange = () => (values[key] = input.checked)
+    input.onchange = () => {
+      values[key] = input.checked
+    }
     return
   }
   if (typeof value !== 'number') return
@@ -53,7 +57,9 @@ function addCopyButton(panel: HTMLElement, config: Config) {
   copy.textContent = 'Copy config JSON'
   copy.onclick = () =>
     navigator.clipboard.writeText(JSON.stringify(config, null, 2)).then(
-      () => (copy.textContent = 'Copied'),
+      () => {
+        copy.textContent = 'Copied'
+      },
       (err) => {
         copy.textContent = 'Copy failed (see console)'
         console.error('Clipboard write failed', err)

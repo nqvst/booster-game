@@ -9,11 +9,13 @@ export const config = {
 
   rocket: {
     thrust: 260, // acceleration per engine. Both engines = 2x
-    engineOffset: 12, // "balance": distance from center to each engine. Far out = spins fast, near center = stable but slow to steer
+    // "balance": distance from center to each engine. Far out = spins fast, near center = stable but slow to steer
+    engineOffset: 12,
     inertia: 600, // resistance to spinning
     spinDamping: 1.5, // how fast spin bleeds off
     drag: 0.15, // linear air drag
-    safeLandingAngle: 1.0, // ~57°, feet touching more tilted than this = crash. Any speed is fine; nose/side contact always crashes
+    // ~57°, feet touching more tilted than this = crash. Any speed is fine; nose/side contact always crashes
+    safeLandingAngle: 1.0,
     hitRadius: 14, // bullet hit radius
   },
 

@@ -40,7 +40,12 @@ assert(buffer.byteLength < 250, `snapshot should be small, is ${buffer.byteLengt
 assert.throws(() => decodeSnapshot(buffer, ['host']), /roster/, 'a rocket count that disagrees with the roster should throw')
 
 // Blending halfway between two snapshots puts rockets halfway, also across the ±π seam.
-const at = (time: number, x: number, angle: number): Snapshot => ({ ...snap, time, events: [], rockets: snap.rockets.map((r) => ({ ...r, alive: true, x, angle })) })
+const at = (time: number, x: number, angle: number): Snapshot => ({
+  ...snap,
+  time,
+  events: [],
+  rockets: snap.rockets.map((r) => ({ ...r, alive: true, x, angle })),
+})
 const shown = { ...createGame(map, players, 'pvp') }
 blend(shown, at(1, 100, 3.1), at(1.1, 200, -3.1), 1.05)
 close(shown.rockets[0].x, 150, 'blended x')

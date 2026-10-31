@@ -22,10 +22,19 @@ const ZOOM = 3
 
 type Cell = [
   label: string,
-  draw: (ctx: CanvasRenderingContext2D, frame: { x: number; y: number; t: number; boom: (e: Explosion) => void }) => void,
+  draw: (
+    ctx: CanvasRenderingContext2D,
+    frame: { x: number; y: number; t: number; boom: (e: Explosion) => void },
+  ) => void,
 ]
 
-const rocket = (x: number, y: number, team: Team, { left = false, right = false, angle = 0 } = {}) => ({ x, y, team, angle, input: { left, right } })
+const rocket = (x: number, y: number, team: Team, { left = false, right = false, angle = 0 } = {}) => ({
+  x,
+  y,
+  team,
+  angle,
+  input: { left, right },
+})
 const BOTH = { left: true, right: true }
 let canyon = maps[DEFAULT_MAP]
 
@@ -47,7 +56,7 @@ const cells: Cell[] = [
   }],
   ['pad + rock', (ctx, { x, y, t }) => {
     drawRock(ctx, { x: x - 45, y: y + 20, w: 90, h: 25 }, scenery.sky, canyon.biome)
-    drawPad(ctx, { x: x - 35, y: y, w: 70, h: 20 }, 'blue', t)
+    drawPad(ctx, { x: x - 35, y, w: 70, h: 20 }, 'blue', t)
   }],
   ...(['concrete', 'metal', 'hazard', 'panel', 'glass', 'planks', 'hull', 'stone'] as const).map((kind): Cell => [kind, (ctx, { x, y }) => {
     drawSolid(ctx, { x: x - 45, y: y - 10, w: 90, h: 50, kind }, scenery.sky, canyon.biome)

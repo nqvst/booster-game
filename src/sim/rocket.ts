@@ -49,42 +49,42 @@ export function spawnState(slot: number, pad: Rect) {
 }
 
 // Returns true if the rocket crashed this tick.
-export function stepRocket(r: Rocket, map: GameMap, config: Config, dt: number): boolean {
+export function stepRocket(rocket: Rocket, map: GameMap, config: Config, dt: number): boolean {
   const { thrust, engineOffset, inertia, spinDamping, drag } = config.rocket
-  const left = r.input.left ? thrust : 0
-  const right = r.input.right ? thrust : 0
+  const left = rocket.input.left ? thrust : 0
+  const right = rocket.input.right ? thrust : 0
 
   // Left engine pushes the left side up → clockwise torque → nose tilts right.
-  r.spin += (((left - right) * engineOffset) / inertia) * dt
-  r.spin *= Math.max(0, 1 - spinDamping * dt)
-  r.angle = wrapAngle(r.angle + r.spin * dt)
+  rocket.spin += (((left - right) * engineOffset) / inertia) * dt
+  rocket.spin *= Math.max(0, 1 - spinDamping * dt)
+  rocket.angle = wrapAngle(rocket.angle + rocket.spin * dt)
 
   const push = left + right
-  r.vx += push * Math.sin(r.angle) * dt
-  r.vy += (config.world.gravity - push * Math.cos(r.angle)) * dt
+  rocket.vx += push * Math.sin(rocket.angle) * dt
+  rocket.vy += (config.world.gravity - push * Math.cos(rocket.angle)) * dt
   const keep = Math.max(0, 1 - drag * dt)
-  r.vx *= keep
-  r.vy *= keep
-  r.x += r.vx * dt
-  r.y += r.vy * dt
+  rocket.vx *= keep
+  rocket.vy *= keep
+  rocket.x += rocket.vx * dt
+  rocket.y += rocket.vy * dt
 
-  return resolveContact(r, map, config.rocket.safeLandingAngle, dt)
+  return resolveContact(rocket, map, config.rocket.safeLandingAngle, dt)
 }
 
-function toWorld(r: Rocket, [lx, ly]: Point): Point {
-  const c = Math.cos(r.angle)
-  const s = Math.sin(r.angle)
-  return [r.x + lx * c - ly * s, r.y + lx * s + ly * c]
+function toWorld(rocket: Rocket, [lx, ly]: Point): Point {
+  const c = Math.cos(rocket.angle)
+  const s = Math.sin(rocket.angle)
+  return [rocket.x + lx * c - ly * s, rocket.y + lx * s + ly * c]
 }
 
-function resolveContact(r: Rocket, map: GameMap, safeLandingAngle: number, dt: number): boolean {
-  r.landed = false
-  if (HULL.some((p) => solidAt(map, ...toWorld(r, p)))) return true
+function resolveContact(rocket: Rocket, map: GameMap, safeLandingAngle: number, dt: number): boolean {
+  rocket.landed = false
+  if (HULL.some((p) => solidAt(map, ...toWorld(rocket, p)))) return true
 
-  const maxSink = MAX_FOOT_SINK + Math.max(0, r.vy) * dt
+  const maxSink = MAX_FOOT_SINK + Math.max(0, rocket.vy) * dt
   let surface = Infinity
   for (const p of FEET) {
-    const [x, y] = toWorld(r, p)
+    const [x, y] = toWorld(rocket, p)
     const rect = solidAt(map, x, y)
     if (!rect) continue
     if (rect.kind === 'water' || y - rect.y > maxSink) return true // sea is never a landing spot
@@ -92,7 +92,7 @@ function resolveContact(r: Rocket, map: GameMap, safeLandingAngle: number, dt: n
   }
   if (surface === Infinity) return false
 
-  if (Math.abs(r.angle) > safeLandingAngle) return true
-  Object.assign(r, { y: surface - FOOT_Y, angle: 0, spin: 0, vx: 0, vy: 0, landed: true })
+  if (Math.abs(rocket.angle) > safeLandingAngle) return true
+  Object.assign(rocket, { y: surface - FOOT_Y, angle: 0, spin: 0, vx: 0, vy: 0, landed: true })
   return false
 }

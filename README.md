@@ -20,12 +20,13 @@ npm install
 npm run dev      # game at http://localhost:5173, art preview at /art.html
 npm run editor   # map editor at /editor.html
 npm test
-npm run lint
+npm run typecheck
+npm run lint     # ESLint with eslint-rules/, then scripts/check-exports.ts
 ```
 
 | Path | What |
 | --- | --- |
-| `src/sim/` | Game rules. Pure, no DOM: same inputs → same state |
+| `src/sim/` | Game rules. Pure, no DOM: same inputs → same state. Core types are here and in `src/maps/parse.ts` |
 | `src/art/`, `src/render.ts` | Drawing |
 | `src/net.ts`, `src/snapshot.ts`, `src/remote-game.ts` | Multiplayer: connections, the binary snapshot format, joiner-side smoothing |
 | `src/maps/*.json` | Maps, one file each. Picked up automatically |
@@ -48,9 +49,9 @@ Play a map with `?map=<name>` (skips the start screen) or the dropdown in the ga
 ## Release
 
 GitHub Pages deploys on every push to `main` (`.github/workflows/pages.yml`):
-lint → test → build → deploy. A failing lint or test stops the deploy.
+typecheck → lint → test → build → deploy. Any failure stops the deploy.
 
-1. Check locally: `npm run lint && npm test && npm run build`
+1. Check locally: `npm run typecheck && npm run lint && npm test && npm run build`
 2. Worker changed? Deploy it first (see below): the game on `main` may depend on it.
 3. Push or merge to `main`.
 4. Watch the run in the repo's Actions tab, ~1 min.

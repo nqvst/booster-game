@@ -49,7 +49,12 @@ export function rand(lo: number, hi: number) {
 }
 
 // Soft round light. Use inside additive().
-export function glowDot(ctx: CanvasRenderingContext2D, x: number, y: number, { radius, color, alpha = 1 }: { radius: number; color: string; alpha?: number }) {
+export function glowDot(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  { radius, color, alpha = 1 }: { radius: number; color: string; alpha?: number },
+) {
   const g = ctx.createRadialGradient(x, y, 0, x, y, radius)
   g.addColorStop(0, color)
   g.addColorStop(1, 'rgba(0,0,0,0)')

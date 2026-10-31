@@ -17,15 +17,15 @@ type DrawnRocket = Pick<ShownRocket, 'x' | 'y' | 'team' | 'angle' | 'input'>
 type DrawnCannon = Pick<Cannon, 'x' | 'y' | 'team' | 'aim'>
 
 // isMe: outline the local player's rocket so it stands out in multiplayer.
-export function drawRocket(ctx: CanvasRenderingContext2D, r: DrawnRocket, engineOffset: number, isMe = false) {
-  const colors = TEAM[r.team]
+export function drawRocket(ctx: CanvasRenderingContext2D, rocket: DrawnRocket, engineOffset: number, isMe = false) {
+  const colors = TEAM[rocket.team]
   ctx.save()
-  ctx.translate(r.x, r.y)
-  ctx.rotate(r.angle)
+  ctx.translate(rocket.x, rocket.y)
+  ctx.rotate(rocket.angle)
 
   additive(ctx, () => {
-    if (r.input.left) drawPlume(ctx, -engineOffset, 16)
-    if (r.input.right) drawPlume(ctx, engineOffset, 16)
+    if (rocket.input.left) drawPlume(ctx, -engineOffset, 16)
+    if (rocket.input.right) drawPlume(ctx, engineOffset, 16)
   })
   drawLegs(ctx, colors.accent)
 
@@ -160,9 +160,9 @@ function drawPlume(ctx: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 // Ray-gun turret. firing: show a muzzle flash this frame.
-export function drawCannon(ctx: CanvasRenderingContext2D, c: DrawnCannon, firing: boolean, clock: number) {
-  const { accent, laser } = TEAM[c.team]
-  const p = cannonPedestal(c)
+export function drawCannon(ctx: CanvasRenderingContext2D, cannon: DrawnCannon, firing: boolean, clock: number) {
+  const { accent, laser } = TEAM[cannon.team]
+  const p = cannonPedestal(cannon)
   ctx.fillStyle = shaded(ctx, p.x, p.x + p.w, COLOR.gunmetal)
   ctx.fillRect(p.x, p.y, p.w, p.h)
   ctx.fillStyle = accent
@@ -170,16 +170,16 @@ export function drawCannon(ctx: CanvasRenderingContext2D, c: DrawnCannon, firing
   ctx.fillStyle = chrome(ctx, p.x, p.x + p.w)
   ctx.fillRect(p.x, p.y, p.w, 1.5)
 
-  drawBarrel(ctx, c, laser, firing)
-  drawDome(ctx, c, accent)
-  drawOrbit(ctx, c, accent, clock)
+  drawBarrel(ctx, cannon, laser, firing)
+  drawDome(ctx, cannon, accent)
+  drawOrbit(ctx, cannon, accent, clock)
 }
 
 // Ribbed barrel with an emitter bulb
-function drawBarrel(ctx: CanvasRenderingContext2D, c: DrawnCannon, laser: string, firing: boolean) {
+function drawBarrel(ctx: CanvasRenderingContext2D, cannon: DrawnCannon, laser: string, firing: boolean) {
   ctx.save()
-  ctx.translate(c.x, c.y - PIVOT_HEIGHT)
-  ctx.rotate(c.aim)
+  ctx.translate(cannon.x, cannon.y - PIVOT_HEIGHT)
+  ctx.rotate(cannon.aim)
   ctx.fillStyle = chrome(ctx, 0, BARREL_LENGTH)
   ctx.fillRect(0, -1.8, BARREL_LENGTH - 3, 3.6)
   for (const rx of [6, 10, 14]) ctx.fillRect(rx, -4, 1.8, 8)
@@ -187,48 +187,52 @@ function drawBarrel(ctx: CanvasRenderingContext2D, c: DrawnCannon, laser: string
   ctx.beginPath()
   ctx.arc(BARREL_LENGTH - 1, 0, 2.6, 0, TAU)
   ctx.fill()
-  additive(ctx, () => glowDot(ctx, BARREL_LENGTH - 1, 0, { radius: firing ? 16 : 7, color: laser, alpha: firing ? 1 : 0.6 }))
+  additive(ctx, () => glowDot(ctx, BARREL_LENGTH - 1, 0, {
+    radius: firing ? 16 : 7,
+    color: laser,
+    alpha: firing ? 1 : 0.6,
+  }))
   ctx.restore()
 }
 
 // Dome with glowing sensor eye
-function drawDome(ctx: CanvasRenderingContext2D, c: DrawnCannon, accent: string) {
-  const top = cannonPedestal(c).y
-  const eyeY = c.y - PIVOT_HEIGHT + 1
-  ctx.fillStyle = shaded(ctx, c.x - 11, c.x + 11, COLOR.gunmetal)
+function drawDome(ctx: CanvasRenderingContext2D, cannon: DrawnCannon, accent: string) {
+  const top = cannonPedestal(cannon).y
+  const eyeY = cannon.y - PIVOT_HEIGHT + 1
+  ctx.fillStyle = shaded(ctx, cannon.x - 11, cannon.x + 11, COLOR.gunmetal)
   ctx.strokeStyle = COLOR.outline
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.arc(c.x, top, 11, Math.PI, 0)
+  ctx.arc(cannon.x, top, 11, Math.PI, 0)
   ctx.fill()
   ctx.stroke()
-  additive(ctx, () => glowDot(ctx, c.x, eyeY, { radius: 6, color: accent, alpha: 0.9 }))
+  additive(ctx, () => glowDot(ctx, cannon.x, eyeY, { radius: 6, color: accent, alpha: 0.9 }))
   ctx.fillStyle = accent
   ctx.beginPath()
-  ctx.arc(c.x, eyeY, 1.8, 0, TAU)
+  ctx.arc(cannon.x, eyeY, 1.8, 0, TAU)
   ctx.fill()
 }
 
 // Atom orbit with a circling electron
-function drawOrbit(ctx: CanvasRenderingContext2D, c: DrawnCannon, accent: string, clock: number) {
-  const cy = cannonPedestal(c).y - 5
+function drawOrbit(ctx: CanvasRenderingContext2D, cannon: DrawnCannon, accent: string, clock: number) {
+  const cy = cannonPedestal(cannon).y - 5
   const tilt = -0.35
   ctx.strokeStyle = accent
   ctx.lineWidth = 0.7
   ctx.beginPath()
-  ctx.ellipse(c.x, cy, 15, 4, tilt, 0, TAU)
+  ctx.ellipse(cannon.x, cy, 15, 4, tilt, 0, TAU)
   ctx.stroke()
   const a = clock * 3
   const ex = Math.cos(a) * 15
   const ey = Math.sin(a) * 4
-  const x = c.x + ex * Math.cos(tilt) - ey * Math.sin(tilt)
+  const x = cannon.x + ex * Math.cos(tilt) - ey * Math.sin(tilt)
   const y = cy + ex * Math.sin(tilt) + ey * Math.cos(tilt)
   additive(ctx, () => glowDot(ctx, x, y, { radius: 4, color: accent }))
 }
 
-export function drawLaser(ctx: CanvasRenderingContext2D, b: ShownBullet) {
-  const { laser } = TEAM[b.team]
-  const k = LASER_LENGTH / Math.hypot(b.vx, b.vy)
+export function drawLaser(ctx: CanvasRenderingContext2D, bullet: ShownBullet) {
+  const { laser } = TEAM[bullet.team]
+  const k = LASER_LENGTH / Math.hypot(bullet.vx, bullet.vy)
   additive(ctx, () => {
     ctx.lineCap = 'round'
     for (const [width, color, alpha] of [[9, laser, 0.2], [4, laser, 0.7], [1.5, '#fff', 1]] as const) {
@@ -236,8 +240,8 @@ export function drawLaser(ctx: CanvasRenderingContext2D, b: ShownBullet) {
       ctx.strokeStyle = color
       ctx.lineWidth = width
       ctx.beginPath()
-      ctx.moveTo(b.x - b.vx * k, b.y - b.vy * k)
-      ctx.lineTo(b.x, b.y)
+      ctx.moveTo(bullet.x - bullet.vx * k, bullet.y - bullet.vy * k)
+      ctx.lineTo(bullet.x, bullet.y)
       ctx.stroke()
     }
   })

@@ -6,7 +6,8 @@ import { COLOR, SKIES } from '../art/theme.ts'
 import { fitCanvas } from '../art/brush.ts'
 import { drawFlag, drawPad } from '../art/scenery.ts'
 import { drawRock, drawSolid } from '../art/solids.ts'
-import { drawProp, propBounds } from '../art/props/index.ts'
+import { drawProp } from '../art/props/index.ts'
+import { propBounds } from '../art/props/boxes.ts'
 import { drawCannon } from '../art/sprites.ts'
 import { context2d } from '../dom.ts'
 import { GRID, boundsOf, isPropKind } from './model.ts'
@@ -45,7 +46,9 @@ export function drawEditor(canvas: HTMLCanvasElement, editor: Editor, clock: num
     if (hasFlag(map.mode, team)) drawFlag(ctx, flagHome(base), team, clock)
   }
   for (const p of map.props) drawProp(ctx, p, clock)
-  for (const s of map.solids) if (s.kind === 'water') drawWater(ctx, s)
+  for (const s of map.solids) {
+    if (s.kind === 'water') drawWater(ctx, s)
+  }
   if (editor.selected) drawSelection(ctx, boundsOf(editor.selected), 1 / view.zoom)
 }
 
@@ -64,8 +67,20 @@ export function drawPreview(canvas: HTMLCanvasElement, tool: PlacingTool, biome:
 function previewBox(tool: PlacingTool, biome: Biome): PreviewBox {
   const { w, h } = PREVIEW_BLOCK
   if (tool === 'water') return { w, h, draw: (ctx) => drawWater(ctx, { x: 0, y: 0, w, h }) }
-  if (tool === 'cannon') return standing(boundsOf({ kind: 'cannon', obj: { x: 0, y: 0, team: 'red' } }), biome, (ctx, c) => drawStandingCannon(ctx, { ...c, team: 'red' }, biome, 0))
-  if (isPropKind(tool)) return standing(propBounds({ kind: tool, x: 0, y: 0 }), biome, (ctx, p) => drawProp(ctx, { ...p, kind: tool }, 0))
+  if (tool === 'cannon') {
+    return standing(
+      boundsOf({ kind: 'cannon', obj: { x: 0, y: 0, team: 'red' } }),
+      biome,
+      (ctx, c) => drawStandingCannon(ctx, { ...c, team: 'red' }, biome, 0),
+    )
+  }
+  if (isPropKind(tool)) {
+    return standing(
+      propBounds({ kind: tool, x: 0, y: 0 }),
+      biome,
+      (ctx, p) => drawProp(ctx, { ...p, kind: tool }, 0),
+    )
+  }
   return { w, h, draw: (ctx) => drawSolid(ctx, { x: 0, y: 0, w, h, ...(tool !== 'rock' && { kind: tool }) }, SKY, biome) }
 }
 
@@ -85,9 +100,9 @@ function standing(bounds: Rect, biome: Biome, draw: (ctx: Ctx, foot: Point) => v
   }
 }
 
-function drawStandingCannon(ctx: Ctx, c: CannonSpot, biome: Biome, clock: number): void {
-  drawRock(ctx, cannonPedestal(c), SKY, biome)
-  drawCannon(ctx, { ...c, aim: -Math.PI / 2 }, false, clock)
+function drawStandingCannon(ctx: Ctx, cannon: CannonSpot, biome: Biome, clock: number): void {
+  drawRock(ctx, cannonPedestal(cannon), SKY, biome)
+  drawCannon(ctx, { ...cannon, aim: -Math.PI / 2 }, false, clock)
 }
 
 function drawSky(ctx: Ctx, { width, height }: Pick<GameMap, 'width' | 'height'>, gradientHeight: number): void {
@@ -107,27 +122,33 @@ function drawGrid(ctx: Ctx, map: GameMap, px: number): void {
   ctx.strokeRect(0, 0, map.width, map.height)
 }
 
-function drawWater(ctx: Ctx, s: Rect): void {
+function drawWater(ctx: Ctx, water: Rect): void {
   ctx.fillStyle = WATER_BASE
-  ctx.fillRect(s.x, s.y, s.w, s.h)
-  const tint = ctx.createLinearGradient(0, s.y, 0, s.y + s.h)
+  ctx.fillRect(water.x, water.y, water.w, water.h)
+  const tint = ctx.createLinearGradient(0, water.y, 0, water.y + water.h)
   tint.addColorStop(0, SKY.water[0])
   tint.addColorStop(1, SKY.water[1])
   ctx.fillStyle = tint
-  ctx.fillRect(s.x, s.y, s.w, s.h)
+  ctx.fillRect(water.x, water.y, water.w, water.h)
   ctx.fillStyle = SKY.waterLine
-  ctx.fillRect(s.x, s.y, s.w, 2)
+  ctx.fillRect(water.x, water.y, water.w, 2)
 }
 
-function drawSelection(ctx: Ctx, r: Rect, px: number): void {
+function drawSelection(ctx: Ctx, rect: Rect, px: number): void {
   ctx.strokeStyle = SELECT
   ctx.lineWidth = 2 * px
   ctx.setLineDash([6 * px, 4 * px])
-  ctx.strokeRect(r.x, r.y, r.w, r.h)
+  ctx.strokeRect(rect.x, rect.y, rect.w, rect.h)
   ctx.setLineDash([])
   ctx.fillStyle = SELECT
   const size = 7 * px
-  for (const [x, y] of [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]]) {
+  const corners = [
+    [rect.x, rect.y],
+    [rect.x + rect.w, rect.y],
+    [rect.x, rect.y + rect.h],
+    [rect.x + rect.w, rect.y + rect.h],
+  ]
+  for (const [x, y] of corners) {
     ctx.fillRect(x - size / 2, y - size / 2, size, size)
   }
 }

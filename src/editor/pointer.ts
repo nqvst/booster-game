@@ -49,50 +49,60 @@ export function attachPointer(canvas: HTMLCanvasElement, editor: Editor, { onCha
   canvas.addEventListener('wheel', (e) => wheel(canvas, editor.view, e), { passive: false })
 }
 
-function startDrag(editor: Editor, e: PointerEvent, p: Point): Drag {
+function startDrag(editor: Editor, e: PointerEvent, point: Point): Drag {
   const pan: Drag = { kind: 'pan', from: { x: e.clientX, y: e.clientY }, start: { ...editor.view } }
   if (e.button !== 0) return pan
-  if (editor.tool === 'select') return selectDrag(editor, p) ?? pan
-  if (editor.tool === 'cannon') return { kind: 'stand', item: { kind: 'cannon', obj: addCannon(editor, p) } }
-  if (isPropKind(editor.tool)) return { kind: 'stand', item: { kind: 'prop', obj: addProp(editor, p, editor.tool) } }
-  const rect = addRect(editor, p, editor.tool)
+  if (editor.tool === 'select') return selectDrag(editor, point) ?? pan
+  if (editor.tool === 'cannon') return { kind: 'stand', item: { kind: 'cannon', obj: addCannon(editor, point) } }
+  if (isPropKind(editor.tool)) return { kind: 'stand', item: { kind: 'prop', obj: addProp(editor, point, editor.tool) } }
+  const rect = addRect(editor, point, editor.tool)
   return { kind: 'resize', item: { kind: 'solid', obj: rect }, start: { ...rect }, edges: { r: true, b: true }, created: true }
 }
 
-function selectDrag(editor: Editor, p: Point): Drag | null {
+function selectDrag(editor: Editor, point: Point): Drag | null {
   const { selected } = editor
-  const edges = selected && isRect(selected) && edgesNear(selected.obj, p, EDGE_PX / editor.view.zoom)
+  const edges = selected && isRect(selected) && edgesNear(selected.obj, point, EDGE_PX / editor.view.zoom)
   if (edges) {
     remember(editor)
     return { kind: 'resize', item: selected, start: { ...selected.obj }, edges }
   }
-  const item = itemAt(editor.map, p)
+  const item = itemAt(editor.map, point)
   editor.selected = item
   if (!item) return null
   remember(editor)
   if (!isRect(item)) return { kind: 'stand', item }
-  return { kind: 'move', item, from: p, start: { x: item.obj.x, y: item.obj.y } }
+  return { kind: 'move', item, from: point, start: { x: item.obj.x, y: item.obj.y } }
 }
 
-function moveDrag(editor: Editor, drag: Drag, e: PointerEvent, p: Point): void {
+function moveDrag(editor: Editor, drag: Drag, e: PointerEvent, point: Point): void {
   if (drag.kind === 'pan') {
     editor.view.x = drag.start.x - (e.clientX - drag.from.x) / editor.view.zoom
     editor.view.y = drag.start.y - (e.clientY - drag.from.y) / editor.view.zoom
   }
-  if (drag.kind === 'move') Object.assign(drag.item.obj, { x: snap(drag.start.x + p.x - drag.from.x), y: snap(drag.start.y + p.y - drag.from.y) })
-  if (drag.kind === 'stand') placeOnSurface(editor.map, drag.item.obj, p)
-  if (drag.kind === 'resize') resize(drag, p)
+  if (drag.kind === 'move') {
+    Object.assign(drag.item.obj, {
+      x: snap(drag.start.x + point.x - drag.from.x),
+      y: snap(drag.start.y + point.y - drag.from.y),
+    })
+  }
+  if (drag.kind === 'stand') placeOnSurface(editor.map, drag.item.obj, point)
+  if (drag.kind === 'resize') resize(drag, point)
 }
 
 // Edges follow the pointer; dragging past the opposite edge flips the rect.
-function resize({ item, start, edges, created }: ResizeDrag, p: Point): void {
+function resize({ item, start, edges, created }: ResizeDrag, point: Point): void {
   let [l, r, t, b] = [start.x, start.x + start.w, start.y, start.y + start.h]
-  if (edges.l) l = snap(p.x)
-  if (edges.r) r = snap(p.x)
-  if (edges.t) t = snap(p.y)
-  if (edges.b) b = snap(p.y)
+  if (edges.l) l = snap(point.x)
+  if (edges.r) r = snap(point.x)
+  if (edges.t) t = snap(point.y)
+  if (edges.b) b = snap(point.y)
   const min = created ? { w: 0, h: 0 } : minSize(item)
-  Object.assign(item.obj, { x: Math.min(l, r), y: Math.min(t, b), w: Math.max(Math.abs(r - l), min.w), h: Math.max(Math.abs(b - t), min.h) })
+  Object.assign(item.obj, {
+    x: Math.min(l, r),
+    y: Math.min(t, b),
+    w: Math.max(Math.abs(r - l), min.w),
+    h: Math.max(Math.abs(b - t), min.h),
+  })
 }
 
 // A click with a rect tool (no drag) leaves a zero-size rect: drop it.
@@ -105,12 +115,12 @@ function endDrag(editor: Editor, drag: Drag): void {
   forgetIfUnchanged(editor)
 }
 
-function hoverCursor(editor: Editor, p: Point): string {
+function hoverCursor(editor: Editor, point: Point): string {
   const { selected, tool, view } = editor
   if (tool !== 'select') return 'crosshair'
-  const edges = selected && isRect(selected) && edgesNear(selected.obj, p, EDGE_PX / view.zoom)
+  const edges = selected && isRect(selected) && edgesNear(selected.obj, point, EDGE_PX / view.zoom)
   if (edges) return CURSORS[Object.entries(edges).filter(([, near]) => near).map(([k]) => k).join('')] ?? 'move'
-  return itemAt(editor.map, p) ? 'move' : 'grab'
+  return itemAt(editor.map, point) ? 'move' : 'grab'
 }
 
 function wheel(canvas: HTMLCanvasElement, view: View, e: WheelEvent): void {
@@ -131,5 +141,8 @@ function wheel(canvas: HTMLCanvasElement, view: View, e: WheelEvent): void {
 // view.x, view.y: world point at the canvas center. zoom: CSS pixels per world unit.
 function toWorld(canvas: HTMLCanvasElement, view: View, e: MouseEvent): Point {
   const box = canvas.getBoundingClientRect()
-  return { x: view.x + (e.clientX - box.left - box.width / 2) / view.zoom, y: view.y + (e.clientY - box.top - box.height / 2) / view.zoom }
+  return {
+    x: view.x + (e.clientX - box.left - box.width / 2) / view.zoom,
+    y: view.y + (e.clientY - box.top - box.height / 2) / view.zoom,
+  }
 }

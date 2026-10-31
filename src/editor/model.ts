@@ -136,7 +136,10 @@ export function mirrorMap(map: GameMap): Pick<GameMap, 'solids' | 'cannons' | 'p
     solids: half(map.solids, (s) => s.x + s.w / 2, (s) => ({ ...s, x: width - s.x - s.w })),
     cannons: half(map.cannons.map(blueCannon), (c) => c.x, (c) => ({ ...c, x: width - c.x, team: 'red' })),
     props: half(map.props, (p) => p.x, ({ flip, ...p }) => ({ ...p, x: width - p.x, ...(!flip && { flip: true }) })),
-    bases: { ...map.bases, red: { pad: { ...map.bases.blue.pad, x: width - map.bases.blue.pad.x - map.bases.blue.pad.w } } },
+    bases: {
+      ...map.bases,
+      red: { pad: { ...map.bases.blue.pad, x: width - map.bases.blue.pad.x - map.bases.blue.pad.w } },
+    },
   }
 }
 
@@ -173,14 +176,14 @@ export function minSize(item: Item): { w: number; h: number } {
 }
 
 // Topmost first, matching draw order.
-export function itemAt(map: GameMap, p: Point): Item | null {
+export function itemAt(map: GameMap, point: Point): Item | null {
   const items = [
     ...map.cannons.map((obj): Item => ({ kind: 'cannon', obj })),
     ...map.props.map((obj): Item => ({ kind: 'prop', obj })).reverse(),
     ...Object.values(map.bases).map((b): Item => ({ kind: 'pad', obj: b.pad })),
     ...map.solids.map((obj): Item => ({ kind: 'solid', obj })).reverse(),
   ]
-  return items.find((item) => contains(boundsOf(item), p, 0)) ?? null
+  return items.find((item) => contains(boundsOf(item), point, 0)) ?? null
 }
 
 export function boundsOf({ kind, obj }: Item): Rect {
@@ -190,13 +193,21 @@ export function boundsOf({ kind, obj }: Item): Rect {
   return { x, y: obj.y - CANNON_HEIGHT, w, h: CANNON_HEIGHT }
 }
 
-// Which edges of rect r are within tol of p, or null.
-export function edgesNear(r: Rect, p: Point, tol: number): Edges | null {
-  if (!contains(r, p, tol)) return null
-  const edges = { l: Math.abs(p.x - r.x) < tol, r: Math.abs(p.x - r.x - r.w) < tol, t: Math.abs(p.y - r.y) < tol, b: Math.abs(p.y - r.y - r.h) < tol }
+// Which edges of rect are within tol of point, or null.
+export function edgesNear(rect: Rect, point: Point, tol: number): Edges | null {
+  if (!contains(rect, point, tol)) return null
+  const edges = {
+    l: Math.abs(point.x - rect.x) < tol,
+    r: Math.abs(point.x - rect.x - rect.w) < tol,
+    t: Math.abs(point.y - rect.y) < tol,
+    b: Math.abs(point.y - rect.y - rect.h) < tol,
+  }
   return Object.values(edges).some(Boolean) ? edges : null
 }
 
-function contains(r: Rect, p: Point, pad: number): boolean {
-  return p.x >= r.x - pad && p.x <= r.x + r.w + pad && p.y >= r.y - pad && p.y <= r.y + r.h + pad
+function contains(rect: Rect, point: Point, pad: number): boolean {
+  return (
+    point.x >= rect.x - pad && point.x <= rect.x + rect.w + pad &&
+    point.y >= rect.y - pad && point.y <= rect.y + rect.h + pad
+  )
 }

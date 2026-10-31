@@ -34,46 +34,48 @@ export function layoutHills(map: Pick<GameMap, 'width' | 'height'>, sky: Sky, bi
   })
 }
 
-export function drawHills(ctx: CanvasRenderingContext2D, m: HillLayer, { sky, map }: { sky: Sky; map: Pick<GameMap, 'width'> }, clock: number) {
-  ctx.fillStyle = m.color
-  ctx.fill(m.path)
-  if (m.tint) {
+export function drawHills(ctx: CanvasRenderingContext2D, layer: HillLayer, { sky, map }: { sky: Sky; map: Pick<GameMap, 'width'> }, clock: number) {
+  ctx.fillStyle = layer.color
+  ctx.fill(layer.path)
+  if (layer.tint) {
     ctx.save()
     ctx.globalCompositeOperation = 'multiply'
-    ctx.fillStyle = m.tint
-    ctx.fill(m.path)
+    ctx.fillStyle = layer.tint
+    ctx.fill(layer.path)
     ctx.restore()
   }
-  const fog = m.rise * 0.5
-  const haze = ctx.createLinearGradient(0, m.base - fog, 0, m.base)
+  const fog = layer.rise * 0.5
+  const haze = ctx.createLinearGradient(0, layer.base - fog, 0, layer.base)
   haze.addColorStop(0, sky.haze[0])
   haze.addColorStop(1, sky.haze[1])
   ctx.fillStyle = haze
-  ctx.fillRect(-1500, m.base - fog, map.width + 3000, fog)
+  ctx.fillRect(-1500, layer.base - fog, map.width + 3000, fog)
   ctx.fillStyle = sky.haze[1]
-  ctx.fillRect(-1500, m.base, map.width + 3000, 2000)
+  ctx.fillRect(-1500, layer.base, map.width + 3000, 2000)
 
-  for (const b of m.beacons) if (b.tower) drawLighthouse(ctx, b, m.size)
+  for (const b of layer.beacons) {
+    if (b.tower) drawLighthouse(ctx, b, layer.size)
+  }
   additive(ctx, () => {
-    for (const w of m.windows) {
-      glowDot(ctx, w.x, w.y, { radius: 9 * m.size, color: COLOR.windowLight, alpha: 0.35 })
+    for (const w of layer.windows) {
+      glowDot(ctx, w.x, w.y, { radius: 9 * layer.size, color: COLOR.windowLight, alpha: 0.35 })
       ctx.fillStyle = COLOR.windowLight
-      ctx.fillRect(w.x - 1.5 * m.size, w.y - 1.5 * m.size, 3 * m.size, 3 * m.size)
+      ctx.fillRect(w.x - 1.5 * layer.size, w.y - 1.5 * layer.size, 3 * layer.size, 3 * layer.size)
     }
-    for (const b of m.beacons) {
+    for (const b of layer.beacons) {
       const alpha = Math.sin(clock * 2.5 + b.phase) > 0.6 ? 1 : 0.15
-      glowDot(ctx, b.x, b.y, { radius: 16 * m.size, color: COLOR.beacon, alpha })
+      glowDot(ctx, b.x, b.y, { radius: 16 * layer.size, color: COLOR.beacon, alpha })
     }
   })
 }
 
-function drawLighthouse(ctx: CanvasRenderingContext2D, b: Beacon, size: number) {
+function drawLighthouse(ctx: CanvasRenderingContext2D, beacon: Beacon, size: number) {
   const w = 5 * size
   const h = 26 * size
   ctx.fillStyle = COLOR.cream
-  ctx.fillRect(b.x - w / 2, b.y, w, h)
+  ctx.fillRect(beacon.x - w / 2, beacon.y, w, h)
   ctx.fillStyle = COLOR.signal
-  for (let y = b.y + h * 0.2; y < b.y + h; y += h * 0.4) ctx.fillRect(b.x - w / 2, y, w, h * 0.2)
+  for (let y = beacon.y + h * 0.2; y < beacon.y + h; y += h * 0.4) ctx.fillRect(beacon.x - w / 2, y, w, h * 0.2)
 }
 
 // Flat tops with sloped sides.
@@ -135,5 +137,8 @@ function skyline(width: number, { base, rise, size, lit }: Pick<Layer, 'base' | 
 
 function windowsOn({ x, w, top, base, size }: Hill) {
   const at = rand(x + w * 0.3, x + w * 0.7)
-  return Array.from({ length: Math.round(rand(3, 9)) }, () => ({ x: at + rand(-0.2, 0.2) * w, y: rand(top + 12 * size, base - 8) }))
+  return Array.from({ length: Math.round(rand(3, 9)) }, () => ({
+    x: at + rand(-0.2, 0.2) * w,
+    y: rand(top + 12 * size, base - 8),
+  }))
 }

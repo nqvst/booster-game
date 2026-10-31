@@ -31,7 +31,11 @@ export function layoutSea(rect: Solid, solids: Solid[], rain: boolean) {
       phase: rand(0, TAU),
     })),
     splashes: rain
-      ? Array.from({ length: Math.round(rect.w / 25) }, () => ({ x: rand(rect.x, rect.x + rect.w), speed: rand(0.8, 1.6), phase: rand(0, 1) }))
+      ? Array.from({ length: Math.round(rect.w / 25) }, () => ({
+          x: rand(rect.x, rect.x + rect.w),
+          speed: rand(0.8, 1.6),
+          phase: rand(0, 1),
+        }))
       : [],
     shores: solids.filter((s) => s.kind !== 'water' && s.y + s.h === rect.y && s.x < rect.x + rect.w && s.x + s.w > rect.x),
   }
